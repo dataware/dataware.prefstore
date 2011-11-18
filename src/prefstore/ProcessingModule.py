@@ -302,21 +302,5 @@ class ProcessingModule( object ) :
         return token.replace( '+', '*' ) 
 
         
-    #///////////////////////////////////////////////
-
- 
-    def safetyCall( self, func ):
-        """
-            This is a function that protects from mysqldb timeout,
-            performing one reconnection attempt if the provided lambda 
-            function generates a mysqldb error. This is necessary because
-            mysqldb does not currently provided an auto_reconnect facility.
-        """
-        try:
-            return func();
-        except MySQLdb.Error, e:
-            log.error( "%s: db error %s" % ( "ProcessingModule", e.args[ 0 ] ) )
-            self.db.reconnect()
-            return func();
     
     

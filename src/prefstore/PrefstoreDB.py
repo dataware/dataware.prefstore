@@ -25,8 +25,11 @@ def safety_mysql( fn ) :
         try:
             return fn( self, *args, **kwargs )
         except MySQLdb.Error, e:
-            self.reconnect()
-            return fn( self, *args, **kwargs )    
+            if e[ 0 ] == 2006:
+                self.reconnect()
+                return fn( self, *args, **kwargs )
+            else:
+                raise e   
     return wrapper
 
 

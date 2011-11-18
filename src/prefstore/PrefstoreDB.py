@@ -191,6 +191,21 @@ class PrefstoreDB( object ):
         
         log.info( "%s: checking system table integrity..." % self.name );
         
+        #-- first check that the database itself exists        
+        self.cursor.execute ( """
+            SELECT 1
+            FROM information_schema.`SCHEMATA`
+            WHERE schema_name='%s'
+        """ % self.DB_NAME )
+                
+        row = self.cursor.fetchone()
+
+        if ( row is None ):
+            log.info( "%s: database does not exist - creating..." % self.name );    
+            self.cursor.execute ( "CREATE DATABASE catalog" )
+        
+        
+        #-- then check it is populated with the required tables            
         self.cursor.execute ( """
             SELECT table_name
             FROM information_schema.`TABLES`

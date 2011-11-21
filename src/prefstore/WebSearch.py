@@ -118,7 +118,7 @@ class WebSearch( object ):
 
         # Retrieve hits from bing for this query term
         result = urllib.urlopen(
-            "http://api.search.live.net/json.aspx?Appid=%s&query=%s&sources=Image&Image.Count=1&Image.Offset=0&Adult=Moderate&Image.Filters=Aspect:square" % 
+            "http://api.search.live.net/json.aspx?Appid=%s&query=%s&sources=Image&Image.Count=20&Image.Offset=0&Adult=Strict&Image.Filters=Aspect:square" % 
             ( self._BING_KEY, term ), 
             proxies=self._PROXY )    
         
@@ -140,10 +140,9 @@ class WebSearch( object ):
         
         # and finally extract the image result
         try:
-            image_url = jsonOutput.get( "Image" ) \
-                .get( "Results" )[0] \
-                .get( "Thumbnail" ) \
-                .get( "Url" );
-            return image_url
+
+            urls = [  i.get( "Thumbnail" ).get( "Url" ) 
+                for i in jsonOutput.get( "Image" ).get( "Results" ) ]
+            return urls
         except:
             return None

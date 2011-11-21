@@ -11,8 +11,9 @@
 
 <script>
 
+	<!-- PREFSTORE = "http://localhost:80/" #LOCAL!-->
 	PREFSTORE = "http://www.prefstore.org/"
-
+	 
 	$( document ).ready( function() {
 		$( 'div.menu_button' ).mouseover(function() {
 			$(this).css( 'cursor', 'hand' );

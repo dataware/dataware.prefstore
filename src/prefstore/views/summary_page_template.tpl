@@ -31,7 +31,7 @@
 			<div class="table_content" >
 				<div class="table_item">
 					<div class="table_field_name">Username:</div>
-					<div class="table_field_value">{{user[ "screen_name" ]}}</div>
+					<div class="table_field_value">{{user[ "user_name" ]}}</div>
 				</div>
 				<div class="table_item">
 					<div class="table_field_name">Email:</div>

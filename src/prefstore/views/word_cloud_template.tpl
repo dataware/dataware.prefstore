@@ -72,7 +72,7 @@
 ------------------------------------------------------------------>
 <div class="sub_header">
 	<div class="page-name">VISUALIZE</div>
-	<div class="page-description">A WORDCLOUD REPRESENTATION FOR : {{user[ "screen_name" ]}}</div>
+	<div class="page-description">A WORDCLOUD REPRESENTATION FOR : {{user[ "user_name" ]}}</div>
 </div>
 
 

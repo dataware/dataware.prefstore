@@ -93,14 +93,14 @@ class PrefstoreDB( object ):
         TBL_USER_DETAILS : """
             CREATE TABLE %s.%s (
             user_id varchar(256) NOT NULL,
-            screen_name varchar(64),
+            user_name varchar(64),
             email varchar(256),
             total_documents int(10) unsigned NOT NULL,
             last_distill int(10) unsigned NOT NULL,
             last_message int(10) unsigned NOT NULL,
             total_term_appearances bigint(20) NOT NULL DEFAULT 0,
             registered int(10) unsigned,            
-            PRIMARY KEY (user_id) )
+            PRIMARY KEY (user_id), UNIQUE KEY `UNIQUE` (`user_name`) ) 
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_USER_DETAILS ),   
         
@@ -265,7 +265,7 @@ class PrefstoreDB( object ):
             
             query = """
                 INSERT INTO %s.%s 
-                ( user_id, screen_name, email, total_documents, last_distill, last_message, total_term_appearances, registered ) 
+                ( user_id, user_name, email, total_documents, last_distill, last_message, total_term_appearances, registered ) 
                 VALUES ( %s, null, null, 0, 0, 0, 0, null )
             """  % ( self.DB_NAME, self.TBL_USER_DETAILS, '%s' ) 
 
@@ -284,9 +284,9 @@ class PrefstoreDB( object ):
     
     
     @safety_mysql                    
-    def insert_registration( self, user_id, screen_name, email ):
+    def insert_registration( self, user_id, user_name, email ):
             
-        if ( user_id and screen_name and email ):
+        if ( user_id and user_name and email ):
             
             log.info( 
                 "%s %s: Updating user '%s' registration in database" 
@@ -295,11 +295,11 @@ class PrefstoreDB( object ):
             
             query = """
                 UPDATE %s.%s 
-                SET screen_name = %s, email = %s, registered= %s 
+                SET user_name = %s, email = %s, registered= %s 
                 WHERE user_id = %s
             """  % ( self.DB_NAME, self.TBL_USER_DETAILS, '%s', '%s', '%s', '%s' ) 
 
-            self.cursor.execute( query, ( screen_name, email, time(), user_id ) )
+            self.cursor.execute( query, ( user_name, email, time(), user_id ) )
             return True;
         
         else:
@@ -322,6 +322,28 @@ class PrefstoreDB( object ):
             """  % ( self.DB_NAME, self.TBL_USER_DETAILS, '%s' ) 
         
             self.cursor.execute( query, ( user_id, ) )
+            row = self.cursor.fetchone()
+
+            if not row is None:
+                return row
+            else :
+                return None
+        else :
+            return None   
+            
+            
+    #///////////////////////////////////////
+
+
+    @safety_mysql                
+    def fetch_user_by_name( self, user_name ) :
+
+        if user_name :
+            query = """
+                SELECT * FROM %s.%s t where user_name = %s 
+            """  % ( self.DB_NAME, self.TBL_USER_DETAILS, '%s' ) 
+        
+            self.cursor.execute( query, ( user_name, ) )
             row = self.cursor.fetchone()
 
             if not row is None:

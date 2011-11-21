@@ -4,13 +4,13 @@ Created on 8 May 2011
 @author: psxjog
 '''
 
-import threading
-import logging
-import time
-import sys
-import datetime
-import PrefstoreDB
 from WebSearch import * #@UnusedWildImport
+import PrefstoreDB
+import datetime
+import threading
+import time
+import logging
+
 log = logging.getLogger( "console_log" )
 
 
@@ -69,7 +69,7 @@ class WebCountUpdater( threading.Thread ):
                 self.database.commit()
 
             except:
-                log.error( "Error fectching web count for term %s: %s" % ( term, sys.exc_info()[0] ) )
+                log.error( "Error fetching web count for term %s: %s" % ( term, sys.exc_info()[0] ) )
 
         log.info( 
             "Web Count Update: Complete - %d terms, %d updated, %d blacklisted" % \

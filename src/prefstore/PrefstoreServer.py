@@ -3,19 +3,14 @@ Created on 12 April 2011
 @author: jog
 """
 
+from WebCountUpdater import * #@UnusedWildImport
 from __future__ import division
-import logging
-import logging.handlers
-import json
+from bottle import * #@UnusedWildImport
 import OpenIDManager
 import ProcessingModule
-import PrefstoreDB
-from bottle import * #@UnusedWildImport
-from WebCountUpdater import * #@UnusedWildImport
-import MySQLdb
+import logging.handlers
 import validictory
-import StringIO
-import zlib
+
 
 #setup logger for this module
 log = logging.getLogger( "console_log" )
@@ -154,11 +149,11 @@ def authenticate():
                 if ( not user ):
                     prefdb.insert_user( o.get_user_id() )
                     prefdb.commit()
-                    screen_name = None
+                    user_name = None
                 else :
-                    screen_name = user[ "screen_name" ]
+                    user_name = user[ "user_name" ]
                 
-                set_authentication_cookie( user_id, screen_name  )
+                set_authentication_cookie( user_id, user_name  )
                 
             except Exception, e:
                 return error( e )
@@ -198,17 +193,17 @@ def delete_authentication_cookie():
 #///////////////////////////////////////////////
 
 
-def set_authentication_cookie( user_id, screen_name = None ):
+def set_authentication_cookie( user_id, user_name = None ):
     
-    #if the user has no "screen_name" it means that they
+    #if the user has no "user_name" it means that they
     #haven't registered an account yet    
-    if ( not screen_name ):
-        json = '{"user_id":"%s","screen_name":null}' \
+    if ( not user_name ):
+        json = '{"user_id":"%s","user_name":null}' \
             % ( user_id, )
         
     else:
-        json = '{"user_id":"%s","screen_name":"%s"}' \
-            % ( user_id, screen_name )
+        json = '{"user_id":"%s","user_name":"%s"}' \
+            % ( user_id, user_name )
          
     response.set_cookie( EXTENSION_COOKIE, json )
                             
@@ -269,13 +264,17 @@ def register():
         submission = False
         
     if ( submission ): 
-        #validate the screen name supplied by the user
+        #validate the user_name supplied by the user
         try:
-            screen_name = request.GET[ "screen_name" ]
-            if ( not valid_name( screen_name ) ):
-                errors[ 'screen_name' ] = "Must be 3-64 legal characters"    
+            user_name = request.GET[ "user_name" ]
+            if ( not valid_name( user_name ) ):
+                errors[ 'user_name' ] = "Must be 3-64 legal characters"
+            else: 
+                match = prefdb.fetch_user_by_name( user_name ) 
+                if ( not match is None ):
+                    errors[ 'user_name' ] = "That name has already been taken"                    
         except:
-            errors[ 'screen_name' ] = "You must supply a valid screen name"
+            errors[ 'user_name' ] = "You must supply a valid user name"
     
         #validate the email address supplied by the user
         try:
@@ -293,20 +292,20 @@ def register():
         #if everything is okay so far, add the data to the database    
         if ( len( errors ) == 0 ):
             try:
-                match = prefdb.insert_registration( user_id, screen_name, email) 
+                match = prefdb.insert_registration( user_id, user_name, email) 
                 prefdb.commit()
             except Exception, e:
                 return error( e )
 
             #update the cookie with the new details
-            set_authentication_cookie( user_id, screen_name )
+            set_authentication_cookie( user_id, user_name )
             
             #return the user to the home page
             redirect( ROOT_PAGE )
     
     else:
         email = ""
-        screen_name = ""
+        user_name = ""
         
     #if this is the first visit to the page, or there are errors
 
@@ -314,7 +313,7 @@ def register():
         'register_page_template', 
         user=None, 
         email=email,
-        screen_name=screen_name,
+        user_name=user_name,
         errors=errors ) 
     
 
@@ -360,7 +359,7 @@ def check_login():
 
     #first try and extract the user_id from the cookie. 
     #n.b. this can generate LoginExceptions
-    user_id = extract_user_id()
+    user_id =extract_user_id()
     
     if ( user_id ) :
         
@@ -372,7 +371,7 @@ def check_login():
             raise LoginException( "We have no record of the id supplied. Resetting." )
         
         #and finally lets check to see if the user has registered their details
-        if ( user[ "screen_name" ] is None ):
+        if ( user[ "user_name" ] is None ):
             raise RegisterException()
         
         return user
@@ -485,7 +484,7 @@ def submit_distill():
         
         log.debug( 
             "%s: Message successfully authenticated as belonging to '%s'" 
-            % ( "prefstore", user[ "screen_name" ]  ) 
+            % ( "prefstore", user[ "user_name" ]  ) 
         )
 
         # And finally process it into the database
@@ -495,14 +494,14 @@ def submit_distill():
         except:
             log.info( 
                 "%s: Processing Failure for message from '%s'" 
-                % ( "prefstore", user[ "screen_name" ]  )
+                % ( "prefstore", user[ "user_name" ]  )
             ) 
             return "{'success':false,'cause':'Processing error'}"
     
     else:
         log.warning( 
             "%s: Identification Failure for message from '%s'" 
-            % ( "prefstore", user[ "screen_name" ]  ) 
+            % ( "prefstore", user[ "user_name" ]  ) 
         )
         return "{'success':false,'cause':'Authentication error'}"
             
@@ -526,12 +525,13 @@ def process_distill( user, data ) :
 
     #Remove any blacklisted terms from the feature vector
     prefdb.removeBlackListedTerms( fv )
-    processed_terms = len( fv )
+    no_terms = len( fv )
     total_appearances = sum( fv.values() )
 
     #Process the terms we haven't seen before
     try:
-        new_terms = prefdb.insertDictionaryTerms( fv )
+        if no_terms > 0:
+            new_terms = prefdb.insertDictionaryTerms( fv )
     except:
         log.warning( 
             "%s: Error trying to add terms to dictionary"
@@ -541,7 +541,8 @@ def process_distill( user, data ) :
 
     #Process the terms that already exist in the dictinoary            
     try:
-        prefdb.updateTermAppearances( user_id, fv );    
+        if no_terms > 0:
+            prefdb.updateTermAppearances( user_id, fv );    
     except:
         log.warning( 
             "%s: Failed to increment term appearances for '%s'" 
@@ -557,7 +558,7 @@ def process_distill( user, data ) :
     if not userUpdated :
         log.error( 
             "%s: User '%s' could not be updated. Ignoring." 
-            % ( "prefstore", user[ "screen_name" ] ) 
+            % ( "prefstore", user[ "user_name" ] ) 
         )
         return False    
       
@@ -568,9 +569,9 @@ def process_distill( user, data ) :
     log.info( 
         "%s: Distillation processed for '%s' (%d terms, %d processed, %d new, %d appearances, %.4f secs)" % ( 
             "prefstore", 
-            user[ "screen_name" ], 
+            user[ "user_name" ], 
             total_terms,
-            processed_terms, 
+            no_terms, 
             new_terms,
             total_appearances,
             time.time() - start_processing 
@@ -712,10 +713,10 @@ def analysis():
     except Exception, e:
         return error( e )        
   
-  
+
 #///////////////////////////////////////////////  
-        
-    
+
+      
 @route('/visualize')
 def word_cloud():
     
@@ -787,34 +788,7 @@ def word_cloud():
                 doc_appearance_data +=  data_str % ( term, doc_appearances, term )
                 web_importance_data +=  data_str % ( term, importance  * 10000, term )
                 relevance_data +=  data_str % ( term, relevance * 10000, term )
-               
-                #below is some code for image representations of your interests
-                #Very neato ;)
-                """
-                    BING_KEY = "580DDBFFD1A4581F90038B9D5B80BA065FEFE4E7"
-                    WEB_PROXY = 'http://mainproxy.nottingham.ac.uk:8080'    
-                    search = WebSearch( proxy=WEB_PROXY, bing_key=BING_KEY )
-                    urls = []
-                    image_count = 0
-        
-                    if ( image_count < 10 ):
-                    urls.append(
-                        ( term, search.getBingImage( term ) )
-                    )
-                    image_count += 1
-                    
-                    <!-- code for image version of the cloud
-                    <img class="term_image" src="{{ urls[ 0 ][ 1 ] }}" title="{{ urls[ 0 ][ 0 ] }}" >
-                    <img class="term_image" src="{{ urls[ 1 ][ 1 ] }}" title="{{ urls[ 1 ][ 0 ] }}" >
-                    <img class="term_image" src="{{ urls[ 2 ][ 1 ] }}" title="{{ urls[ 2 ][ 0 ] }}" ><br/>
-                    <img class="term_image" src="{{ urls[ 3 ][ 1 ] }}" title="{{ urls[ 3 ][ 0 ] }}" >
-                    <img class="term_image" src="{{ urls[ 4 ][ 1 ] }}" title="{{ urls[ 4 ][ 0 ] }}" >
-                    <img class="term_image" src="{{ urls[ 5 ][ 1 ] }}" title="{{ urls[ 5 ][ 0 ] }}" ><br/>
-                    <img class="term_image" src="{{ urls[ 6 ][ 1 ] }}" title="{{ urls[ 6 ][ 0 ] }}" >
-                    <img class="term_image" src="{{ urls[ 7 ][ 1 ] }}" title="{{ urls[ 7 ][ 0 ] }}" >
-                    <img class="term_image" src="{{ urls[ 8 ][ 1 ] }}" title="{{ urls[ 8 ][ 0 ] }}" >
-                    -->
-                """ 
+              
        
         data =""" {
             'total appearances':[ %s ],
@@ -871,6 +845,7 @@ def home( ):
 
     return template( 'home_page_template', user=user, summary=summary );
     
+    
 #///////////////////////////////////////////////  
     
     
@@ -920,6 +895,7 @@ def audit():
     #if the user doesn't exist or is not logged in,
     #then send them home. naughty user.
     if ( not user ) : redirect( ROOT_PAGE ) 
+    
             
 #//////////////////////////////////////////////////////////
 # MAIN FUNCTION
@@ -927,22 +903,24 @@ def audit():
 
 
 if __name__ == '__main__' :
-    
+
     #-------------------------------
     # setup logging
     #-------------------------------
     log = logging.getLogger( 'console_log' )
     data_log = logging.getLogger( 'data_log' )
     
-    #set logging levels
-    log.setLevel( logging.INFO )
+    # set logging levels
+    log.setLevel( logging.DEBUG )
     data_log.setLevel( logging.DEBUG )    
 
     # create handlers
+    #LOCAL ch = logging.StreamHandler(sys.stdout)
     ch = logging.handlers.TimedRotatingFileHandler( 
         filename='logs/prefstore.log',
         when='midnight', 
         interval=21 )
+    
     fh = logging.handlers.TimedRotatingFileHandler( 
         filename='logs/prefstore_data.log',
         when='midnight', 
@@ -962,7 +940,9 @@ if __name__ == '__main__' :
     #-------------------------------
     EXTENSION_COOKIE = "logged_in"
     PORT = 80
-    REALM = "http://www.prefstore.org"
+    #LOCAL!
+    #REALM = "http://localhost:80"
+    REALM = "http://www.prefstore.org"    
     ROOT_PAGE = "/"
         
     #-------------------------------
@@ -987,9 +967,7 @@ if __name__ == '__main__' :
         debug( True )
         run( host='0.0.0.0', port=PORT, quiet=True )
     except Exception, e:  
-        log.error( "Web Server Startup failed: %s" % ( e, ) )
+        log.error( "Web Server Exception: %s" % ( e, ) )
         exit()
-        
-
    
    

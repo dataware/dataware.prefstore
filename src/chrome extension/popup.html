@@ -16,7 +16,7 @@
 	
 	//-- Setup the global variables for the page
 	var user_id;
-	var screen_name;
+	var user_name;
 	
 	//-- and startup the main function
 	refresh( 300 );
@@ -25,15 +25,15 @@
 	//-- any action has occurred in order to update the page view)	
 	function refresh( duration ) {
 		user_id = window.localStorage.getItem( "user_id" );
-		screen_name = window.localStorage.getItem( "screen_name" );
+		user_name = window.localStorage.getItem( "user_name" );
 
-		$( '#screen_name' ).html( screen_name ) 
+		$( '#user_name' ).html( user_name ) 
 		
 		//-- create the appropriate information box
-		if ( user_id && !screen_name ) {
+		if ( user_id && !user_name ) {
 			displayBox( "registerBox", duration );
 		}
-		else if ( user_id && screen_name ) {
+		else if ( user_id && user_name ) {
 			displayBox( "loggedInBox", duration );
 		}
 		else {
@@ -51,7 +51,7 @@
 	 */
 	function UpdateCurrentPageBox( duration ) {
 
-		if (  user_id && screen_name ) {
+		if (  user_id && user_name ) {
 
 			pagesAnalysed = window.localStorage.getItem( "pagesAnalysed" );
 			pagesSent = window.localStorage.getItem( "pagesSent" );
@@ -128,7 +128,7 @@
 
 		chrome.cookies.remove({ "url" : DOMAIN, "name" : COOKIE_NAME }, function(info) {
 				user_id = window.localStorage.removeItem( "user_id" );
-				screen_name = window.localStorage.removeItem( "screen_name" );
+				user_name = window.localStorage.removeItem( "user_name" );
 				refresh(300);
 			}
 		);
@@ -201,7 +201,7 @@
 
 	<div id="loggedInBox" class="displayBox" style="height:65px; text-align:right; width:230px">
 		<div style="font-size:19px; color: #444444; margin-bottom:-2px;">Username:</div>
-		<div id="screen_name" style="font-family:Georgia; font-size:14px; color: #444444;"></div>
+		<div id="user_name" style="font-family:Georgia; font-size:14px; color: #444444;"></div>
 		<div style="margin-top:0px;"><a href="javascript:logout()">logout</a></div>
 	</div>
 

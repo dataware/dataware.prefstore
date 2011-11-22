@@ -36,7 +36,7 @@
 		</div>
 		<div style="text-align:left; font-style:italic; font-family:georgia; font-size:12px; color: #888888; margin:10px 0px 18px 7px;">
 			This seems to be the first time you have logged in. To activate your account
-			please pick a screen name, and register an email address:
+			please pick a user name, and register an email address:
 		</div>
 		<div id="loggedOutBox" >
         <form action="register" method="GET" >

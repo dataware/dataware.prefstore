@@ -19,14 +19,15 @@
 	var user_name;
 	
 	//-- and startup the main function
-	refresh( 300 );
+	refresh( 0 );
 	
 	//-- Main function (also named refresh because it is called after 
 	//-- any action has occurred in order to update the page view)	
 	function refresh( duration ) {
+		
 		user_id = window.localStorage.getItem( "user_id" );
 		user_name = window.localStorage.getItem( "user_name" );
-
+	
 		$( '#user_name' ).html( user_name ) 
 		
 		//-- create the appropriate information box
@@ -129,7 +130,7 @@
 		chrome.cookies.remove({ "url" : DOMAIN, "name" : COOKIE_NAME }, function(info) {
 				user_id = window.localStorage.removeItem( "user_id" );
 				user_name = window.localStorage.removeItem( "user_name" );
-				refresh(300);
+				refresh(0);
 			}
 		);
 	}
@@ -153,7 +154,7 @@
 			window.localStorage.setItem( "pagesComplete" ) = 0;
 			window.localStorage.setItem( "lastPage" ) = "{}";  
 			window.localStorage.setItem( "lastPageStatus" ) = "";
-			refresh( 300 );
+			refresh( 0 );
 		}
 	}
 

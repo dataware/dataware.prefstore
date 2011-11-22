@@ -1,5 +1,5 @@
 {
-  "name": "Chrome Dataware",
+  "name": "Prefstore Extension (Dataware)",
   "version": "1.21",
   "description": "An extension that can create a linguistic model of the web content that view, saving this to your personal preferences datastore",
   "background_page": "background.html",

@@ -60,21 +60,23 @@
 				
 				if ( cookie ) {
 
-					jsonString = eval( cookie.value )
-					data = eval( '(' + jsonString + ')' )
-
+					jsonString = eval( '(' + cookie.value + ')' );
+					data = eval( '(' + jsonString + ')' );
+								
 					if ( data.user_id ) {
 						window.localStorage.setItem( "user_id", data.user_id );
 					}
 					
-					if ( user_name ) {
-						window.localStorage.setItem( "user_name", user_name );
+					if ( data.user_name ) {
+						window.localStorage.setItem( "user_name", data.user_name );
 					}
 				}
+				else
+					console.log( "no cookie" )
 
 				user_id = window.localStorage.getItem( "user_id" );
 				user_name = window.localStorage.getItem( "user_name" );
-				
+			
 				refresh();
 			}
 		);

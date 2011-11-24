@@ -2,15 +2,13 @@
 Created on 12 April 2011
 @author: jog
 """
-
-from WebCountUpdater import * #@UnusedWildImport
 from __future__ import division
+from WebCountUpdater import * #@UnusedWildImport
 from bottle import * #@UnusedWildImport
 import OpenIDManager
 import ProcessingModule
 import logging.handlers
 import validictory
-
 
 #setup logger for this module
 log = logging.getLogger( "console_log" )
@@ -44,9 +42,38 @@ def invoke_request():
 
 #///////////////////////////////////////////////
  
- 
+
+@route( '/permit_request', method = "GET" ) 
 @route( '/permit_request', method = "POST" )
 def permit_request():
+
+    
+    #TODO: remove this temporary hack
+    success = """{
+        "success":true,
+        "return":{
+           "access_token":"50gqQw04vi/qU22iWNT63/xvgmYFIuw9dy3oe7uobSU="
+        }
+    }"""
+    
+    failure = """{
+        "success":false,
+        "error": {
+            "type":"PermitException",
+            "message":"Unacceptable request. Query violates security."
+        }
+    }"""
+    
+    try:
+        for name, item in request.POST.iterallitems():
+            print "POST", name, item
+        if request.POST[ 'success' ]:
+            return success
+    except:
+        pass
+    
+    return failure
+    
 
     try:
         user_id = request.forms.get( 'user_id' )
@@ -444,7 +471,7 @@ def submit_distill():
         )
         return "{'success':false,'cause':'required parameters missing'}"
         
-
+        
     try:
         #convert the data into a json object
         data = json.loads( data )
@@ -478,7 +505,6 @@ def submit_distill():
         )          
         return "{'success':false,'cause':'User Lookup error'}"   
     
-    
     # Authenticate the user, using the supplied key
     if user:
         
@@ -501,7 +527,7 @@ def submit_distill():
     else:
         log.warning( 
             "%s: Identification Failure for message from '%s'" 
-            % ( "prefstore", user[ "user_name" ]  ) 
+            % ( "prefstore", user_id  ) 
         )
         return "{'success':false,'cause':'Authentication error'}"
             

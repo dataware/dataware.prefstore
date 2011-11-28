@@ -205,7 +205,7 @@ class ProcessingModule( object ) :
                 jsonScope.replace( '\r\n','\n' ), 
                 strict=False 
             )
-            target_resource = scope[ "target_resource" ]
+            resource_provider = scope[ "resource_provider" ]
             expiry_time = scope[ "expiry_time" ]
             query = scope[ "query" ] 
         except Exception, e:

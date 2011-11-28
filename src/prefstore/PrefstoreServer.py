@@ -15,7 +15,7 @@ import validictory
 #//////////////////////////////////////////////////////////
 
 log = logging.getLogger( "console_log" )
-data_log = logging.getLogger( "console_log" )
+data_log = logging.getLogger( "data_log" )
 
 class std_writer( object ):
     def __init__( self, msg ):

@@ -10,10 +10,24 @@ import ProcessingModule
 import logging.handlers
 import validictory
 
-#setup logger for this module
+#//////////////////////////////////////////////////////////
+# SETUP LOGGING FOR THIS MODULE
+#//////////////////////////////////////////////////////////
+
 log = logging.getLogger( "console_log" )
 data_log = logging.getLogger( "console_log" )
 
+class std_writer( object ):
+    def __init__( self, msg ):
+        self.msg = msg
+    
+    def write(self, data):
+        data = data.replace( '\n', '' ) \
+                  .replace( '\t', '' )
+        if len( data ) > 0 :
+            log.error( self.msg + ": " + data )
+        
+                   
 #//////////////////////////////////////////////////////////
 # CONSTANTS
 #//////////////////////////////////////////////////////////
@@ -933,10 +947,6 @@ if __name__ == '__main__' :
     #-------------------------------
     # setup logging
     #-------------------------------
-    log = logging.getLogger( 'console_log' )
-    data_log = logging.getLogger( 'data_log' )
-    
-    # set logging levels
     log.setLevel( logging.DEBUG )
     data_log.setLevel( logging.DEBUG )    
 
@@ -960,17 +970,33 @@ if __name__ == '__main__' :
     # add the handlers to the logger
     log.addHandler( ch )
     data_log.addHandler( fh )    
+            
+    # redirect standard outputs
+    sys.stdout = std_writer( "stdout" )
+    sys.stderr = std_writer( "stderr" )
     
     #-------------------------------
     # constants
     #-------------------------------
     EXTENSION_COOKIE = "logged_in"
     PORT = 80
-    #LOCAL!
-    #REALM = "http://localhost:80"
-    REALM = "http://www.prefstore.org"    
+    #LOCAL! REALM = "http://localhost:80"
+    REALM = "http://www.prefstore.org" 
+    HOST = "0.0.0.0"  
+    BOTTLE_QUIET = True 
     ROOT_PAGE = "/"
-        
+
+    #-------------------------------
+    # declare initialization in logs
+    #-------------------------------        
+    print "-"*40
+    print "PREFSTORE IGNITION"
+    print "PORT = %s" % PORT
+    print "HOST = %s" % HOST
+    print "REALM = %s" % REALM
+    print "BOTTLE_QUIET = %s" % BOTTLE_QUIET
+    print "-"*40
+    
     #-------------------------------
     # initialization
     #-------------------------------
@@ -991,7 +1017,7 @@ if __name__ == '__main__' :
                 
     try:
         debug( True )
-        run( host='0.0.0.0', port=PORT, quiet=True )
+        run( host=HOST, port=PORT, quiet=BOTTLE_QUIET )
     except Exception, e:  
         log.error( "Web Server Exception: %s" % ( e, ) )
         exit()

@@ -176,18 +176,18 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
         
-    def permit_request( self, catalog_secret, client_id, user_id, jsonScope ):
+    def register_request( self, catalog_secret, client_id, user_id, jsonScope ):
         
         #check that the catalog_secret is correct for this user_id
         try:
             if ( not self.db.authenticate( user_id, catalog_secret ) ) :
                 return self.format_process_failure(
-                    "PermitException",
+                    "RegisterException",
                     "incorrect user_id or catalog_secret"
                 ) 
         except:    
             return self.format_process_failure(
-                "PermitException",
+                "RegisterException",
                 "Database problems are currently being experienced"
             ) 
         
@@ -195,7 +195,7 @@ class ProcessingModule( object ) :
         #check that the client_id exists and is valid
         if not ( client_id ):
             return self.format_process_failure(
-                "PermitException",
+                "RegisterException",
                 "A valid client ID has not been provided"
             )  
         
@@ -208,9 +208,9 @@ class ProcessingModule( object ) :
             resource_provider = scope[ "resource_provider" ]
             expiry_time = scope[ "expiry_time" ]
             query = scope[ "query" ] 
-        except Exception, e:
+        except Exception:
             return self.format_process_failure(
-                "PermitException",
+                "RegisterException",
                 "incorrectly formatted JSON scope"
             ) 
         
@@ -219,13 +219,13 @@ class ProcessingModule( object ) :
             compile(query, '', 'exec')
         except:
             return self.format_process_failure(
-                "PermitException",
+                "RegisterException",
                 "Compilation error occurred: %s" % 
                 ( str( sys.exc_info() ) )
             ) 
             
         #TODO: check that the expiry time is valid
-        #TODO: check that the target_resource is correct (i.e. us)
+        #TODO: check that the resource_provider is correct (i.e. us)
         #TODO: should check code here to confirm that it is valid 
         #TODO: this could be done by comparisng the checksum for acceptable queries?
         #TODO: this will require sandboxing, and all sorts...
@@ -248,13 +248,13 @@ class ProcessingModule( object ) :
         #if the user access_token already exists an Integrity Error will be thrown
         except MySQLdb.IntegrityError:
             return self.format_process_failure(
-                "PermitException",
+                "RegisterException",
                 "An identical request already exists"
             ) 
               
         except:    
             return self.format_process_failure(
-                "PermitException",
+                "RegisterException",
                 "Database problems are currently being experienced"
             ) 
             
@@ -262,13 +262,13 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
     
-    def revoke_request( self, user_id, catalog_secret, access_token ):
+    def deregister_request( self, user_id, catalog_secret, access_token ):
  
         #check that the catalog_secret is correct for this user_id
         try:
             if ( not self.db.authenticate( user_id, catalog_secret ) ) :
                 return self.format_process_failure(
-                    "RevokeException",
+                    "DeregisterException",
                     "Incorrect user_id or catalog_secret"
                 ) 
     
@@ -276,12 +276,12 @@ class ProcessingModule( object ) :
                 return self.format_process_success() 
             else :
                 return self.format_process_failure(
-                    "RevokeException",
+                    "DeregisterException",
                     "Deletion failed because request object not found"
                 ) 
         except:    
             return self.format_process_failure(
-                "RevokeException",
+                "DeregisterException",
                 "Database problems are currently being experienced"
             ) 
             

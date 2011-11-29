@@ -57,11 +57,9 @@ def invoke_request():
 #///////////////////////////////////////////////
  
 
-@route( '/permit_request', method = "GET" ) 
-@route( '/permit_request', method = "POST" )
-def permit_request():
+@route( '/register_request', method = "POST" )
+def register_request():
 
-    
     #TODO: remove this temporary hack
     success = """{
         "success":true,
@@ -111,15 +109,15 @@ def permit_request():
 #///////////////////////////////////////////////
  
  
-@route( '/revoke_request', method = "POST")
-def revoke_request():
+@route( '/deregister_request', method = "POST")
+def deregister_request():
     
     try:
         access_token = request.forms.get( 'access_token' )
         catalog_secret = request.forms.get( 'catalog_secret' )
         user_id = request.forms.get( 'user_id' )
 
-        result = pm.revoke_request( 
+        result = pm.deregister_request( 
             user_id,
             catalog_secret,
             access_token, 

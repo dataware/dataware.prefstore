@@ -54,20 +54,20 @@ class DatawareDB( object ):
             CREATE TABLE %s.%s (
             access_token varchar(256) NOT NULL,
             client_id varchar(256) NOT NULL,
-            user_id varchar(256) NOT NULL,
+            user_name varchar(256) NOT NULL,
             expiry_time int(11) unsigned NOT NULL,
             query text NOT NULL,
             checksum varchar(256) NOT NULL,
             PRIMARY KEY (access_token) USING BTREE,
-            UNIQUE KEY UNIQUE (client_id,user_id,checksum) )
+            UNIQUE KEY UNIQUE (client_id,user_name,checksum) )
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_DATAWARE_QUERIES ),
        
         TBL_DATAWARE_SECRETS : """ 
             CREATE TABLE %s.%s (
-            user_id varchar(256) NOT NULL,
-            catalog_secret varchar(256) NOT NULL,
-            PRIMARY KEY (user_id) ) 
+            user_name varchar(256) NOT NULL,
+            shared_secret varchar(256) NOT NULL,
+            PRIMARY KEY (user_name) ) 
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_DATAWARE_QUERIES ),            
     } 
@@ -199,7 +199,7 @@ class DatawareDB( object ):
 
 
     @safety_mysql   
-    def insert_request( self, access_token, client_id, user_id, expiry_time, query_code ):
+    def insert_request( self, access_token, client_id, user_name, expiry_time, query_code ):
        
         #create a SHA checksum for the file
         checksum = hashlib.sha1( query_code ).hexdigest()
@@ -208,12 +208,11 @@ class DatawareDB( object ):
              INSERT INTO %s.%s VALUES ( %s, %s, %s, %s, %s, %s )
         """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s', '%s', '%s', '%s', '%s', '%s' ) 
         
-        #client_id, user_id and checksum must be unique, to prevent duplicate queries
         self.cursor.execute( 
             query, ( 
                 access_token, 
                 client_id, 
-                user_id, 
+                user_name, 
                 expiry_time, 
                 query_code, 
                 checksum 
@@ -227,13 +226,13 @@ class DatawareDB( object ):
     
     
     @safety_mysql       
-    def delete_request( self, access_token, user_id ):
+    def delete_request( self, access_token, user_name ):
 
         query = """
-             DELETE FROM %s.%s WHERE access_token = %s AND user_id = %s 
+             DELETE FROM %s.%s WHERE access_token = %s AND user_name = %s 
         """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s', '%s' ) 
 
-        self.cursor.execute( query, ( access_token, user_id ) )
+        self.cursor.execute( query, ( access_token, user_name ) )
         self.commit()
                 
         #how many rows have been affected?
@@ -276,21 +275,20 @@ class DatawareDB( object ):
         self.commit()
 
 
-    #////////////////////////////////////////////////////////////////////////////////////////////
+    #///////////////////////////////////////////////
     
     
     @safety_mysql       
-    def authenticate( self, user_id, catalog_secret ) :
+    def authenticate( self, user_name, shared_secret ) :
         
-        if user_id and catalog_secret:
+        if user_name and shared_secret:
             query = """
-                SELECT 1 FROM %s.%s WHERE user_id = %s AND catalog_secret = %s  
+                SELECT 1 FROM %s.%s WHERE user_name = %s AND shared_secret = %s  
             """  % ( self.DB_NAME, self.TBL_DATAWARE_SECRETS, '%s', '%s' ) 
 
-
-            self.cursor.execute( query, ( user_id, catalog_secret ) )
+            self.cursor.execute( query, ( user_name, shared_secret ) )
             row = self.cursor.fetchone()
-
+            
             if ( row is None ):
                 return False
             else:    

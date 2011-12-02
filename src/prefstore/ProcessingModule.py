@@ -176,21 +176,21 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
         
-    def register_request( self, catalog_secret, client_id, user_id, jsonScope ):
+    def register_request( self, user_name, 
+        client_id, shared_secret, resource_id, query, expiry_time ): 
         
-        #check that the catalog_secret is correct for this user_id
+        #check that the shared_secret is correct for this user_id
         try:
-            if ( not self.db.authenticate( user_id, catalog_secret ) ) :
+            if ( not self.db.authenticate( user_name, shared_secret ) ) :
                 return self.format_process_failure(
                     "RegisterException",
-                    "incorrect user_id or catalog_secret"
+                    "incorrect user_id or shared_secret"
                 ) 
         except:    
             return self.format_process_failure(
                 "RegisterException",
                 "Database problems are currently being experienced"
             ) 
-        
         
         #check that the client_id exists and is valid
         if not ( client_id ):
@@ -199,24 +199,9 @@ class ProcessingModule( object ) :
                 "A valid client ID has not been provided"
             )  
         
-        #check that the scope unpacks
-        try:
-            scope = json.loads( 
-                jsonScope.replace( '\r\n','\n' ), 
-                strict=False 
-            )
-            resource_provider = scope[ "resource_provider" ]
-            expiry_time = scope[ "expiry_time" ]
-            query = scope[ "query" ] 
-        except Exception:
-            return self.format_process_failure(
-                "RegisterException",
-                "incorrectly formatted JSON scope"
-            ) 
-        
         #check that the requested query is syntactically correct
         try:
-            compile(query, '', 'exec')
+            compile( query, '', 'exec' )
         except:
             return self.format_process_failure(
                 "RegisterException",
@@ -225,7 +210,7 @@ class ProcessingModule( object ) :
             ) 
             
         #TODO: check that the expiry time is valid
-        #TODO: check that the resource_provider is correct (i.e. us)
+        #TODO: check that the resource_id is correct (i.e. us)
         #TODO: should check code here to confirm that it is valid 
         #TODO: this could be done by comparisng the checksum for acceptable queries?
         #TODO: this will require sandboxing, and all sorts...
@@ -236,7 +221,7 @@ class ProcessingModule( object ) :
             self.db.insert_request( 
                 access_token, 
                 client_id, 
-                user_id, 
+                user_name, 
                 expiry_time, 
                 query 
             )
@@ -262,22 +247,28 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
     
-    def deregister_request( self, user_id, catalog_secret, access_token ):
+    def deregister_request( self, user_name, shared_secret, access_token ):
  
-        #check that the catalog_secret is correct for this user_id
+        #check that the shared_secret is correct for this user_id
         try:
-            if ( not self.db.authenticate( user_id, catalog_secret ) ) :
+            if not access_token :
                 return self.format_process_failure(
                     "DeregisterException",
-                    "Incorrect user_id or catalog_secret"
+                    "Identifying access token not supplied"
+                ) 
+                
+            if not self.db.authenticate( user_name, shared_secret ) :
+                return self.format_process_failure(
+                    "DeregisterException",
+                    "Incorrect user_name or shared_secret"
                 ) 
     
-            if ( self.db.delete_request( access_token, user_id ) ) :
+            if self.db.delete_request( access_token, user_name ) :
                 return self.format_process_success() 
             else :
                 return self.format_process_failure(
                     "DeregisterException",
-                    "Deletion failed because request object not found"
+                    "Request with that access token could not found"
                 ) 
         except:    
             return self.format_process_failure(

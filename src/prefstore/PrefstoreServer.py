@@ -56,47 +56,24 @@ def invoke_request():
 
 #///////////////////////////////////////////////
  
-
-@route( '/register_request', method = "POST" )
-def register_request():
-
-    #TODO: remove this temporary hack
-    success = """{
-        "success":true,
-        "return":{
-           "access_token":"50gqQw04vi/qU22iWNT63/xvgmYFIuw9dy3oe7uobSU="
-        }
-    }"""
-    
-    failure = """{
-        "success":false,
-        "error": {
-            "type":"PermitException",
-            "message":"Unacceptable request. Query violates security."
-        }
-    }"""
-    
-    try:
-        for name, item in request.POST.iterallitems():
-            print "POST", name, item
-        if request.POST[ 'success' ]:
-            return success
-    except:
-        pass
-    
-    return failure
-    
+ 
+@route( '/user/:user_name/register_request', method = "POST" )
+def register_request( user_name = None ):
 
     try:
-        user_id = request.forms.get( 'user_id' )
-        catalog_secret = request.forms.get( 'catalog_secret' )
+        shared_secret = request.forms.get( 'shared_secret' )
         client_id = request.forms.get( 'client_id' )
-        jsonScope = request.forms.get( 'scope' )
-        result = pm.permit_request( 
-            catalog_secret, 
-            client_id,  
-            user_id, 
-            jsonScope 
+        resource_id = request.forms.get( 'resource_id' )
+        query = request.forms.get( 'query' )
+        expiry_time = request.forms.get( 'expiry_time' )        
+                
+        result = pm.register_request( 
+            user_name, 
+            client_id,
+            shared_secret, 
+            resource_id,
+            query,
+            expiry_time 
         )
         
         #the result, if successful, will include an access_code
@@ -109,17 +86,19 @@ def register_request():
 #///////////////////////////////////////////////
  
  
-@route( '/deregister_request', method = "POST")
-def deregister_request():
+@route( '/user/:user_name/deregister_request', method = "POST" )
+def deregister_request( user_name = None ):
     
     try:
         access_token = request.forms.get( 'access_token' )
-        catalog_secret = request.forms.get( 'catalog_secret' )
-        user_id = request.forms.get( 'user_id' )
-
+        shared_secret = request.forms.get( 'shared_secret' )
+        
+        print access_token
+        print shared_secret
+        
         result = pm.deregister_request( 
-            user_id,
-            catalog_secret,
+            user_name,
+            shared_secret,
             access_token, 
         )
         
@@ -970,8 +949,8 @@ if __name__ == '__main__' :
     data_log.addHandler( fh )    
             
     # redirect standard outputs
-    sys.stdout = std_writer( "stdout" )
-    sys.stderr = std_writer( "stderr" )
+    #sys.stdout = std_writer( "stdout" )
+    #sys.stderr = std_writer( "stderr" )
     
     #-------------------------------
     # constants

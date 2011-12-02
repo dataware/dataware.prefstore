@@ -93,9 +93,6 @@ def deregister_request( user_name = None ):
         access_token = request.forms.get( 'access_token' )
         shared_secret = request.forms.get( 'shared_secret' )
         
-        print access_token
-        print shared_secret
-        
         result = pm.deregister_request( 
             user_name,
             shared_secret,

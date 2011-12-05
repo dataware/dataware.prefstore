@@ -335,7 +335,6 @@ def register():
 #///////////////////////////////////////////////
 
 
-@route( '/error', method = "GET" )
 def error( e ):
     return "%s: %s" % ( type( e ).__name__, e )
 
@@ -946,8 +945,8 @@ if __name__ == '__main__' :
     data_log.addHandler( fh )    
             
     # redirect standard outputs
-    #sys.stdout = std_writer( "stdout" )
-    #sys.stderr = std_writer( "stderr" )
+    sys.stdout = std_writer( "stdout" )
+    sys.stderr = std_writer( "stderr" )
     
     #-------------------------------
     # constants

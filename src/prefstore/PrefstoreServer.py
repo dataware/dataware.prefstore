@@ -64,7 +64,7 @@ def register_request( user_name = None ):
         shared_secret = request.forms.get( 'shared_secret' )
         client_id = request.forms.get( 'client_id' )
         resource_id = request.forms.get( 'resource_id' )
-        query = request.forms.get( 'query' )
+        query = request.forms.get( 'query' ).replace( '\r\n','\n' )
         expiry_time = request.forms.get( 'expiry_time' )        
                 
         result = pm.register_request( 

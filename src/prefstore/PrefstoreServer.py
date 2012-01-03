@@ -35,6 +35,94 @@ class std_writer( object ):
 TOTAL_WEB_DOCUMENTS = 25000000000
 
 #//////////////////////////////////////////////////////////
+# DEMO FUNCTIONS
+#//////////////////////////////////////////////////////////
+
+@route('/images')
+def get_images():
+
+    try:
+        user = check_login()
+    except RegisterException, e:
+        redirect( "/register" )
+    except LoginException, e:
+        return error( e.msg )
+    except Exception, e:
+        return error( e ) 
+    
+    #if the user doesn't exist or is not logged in,
+    #then send them home. naughty user.
+    if ( not user ) : redirect( ROOT_PAGE )
+    
+    try:
+        try:
+            order_by = request.GET[ "order_by" ] 
+        except:
+            order_by = "total appearances"
+        
+        results = prefdb.fetch_terms( 
+            user_id=user[ "user_id" ], 
+            order_by=order_by, 
+            direction="DESC", 
+            LIMIT=14, 
+            MIN_WEB_PREVALENCE=30000
+        )
+        
+
+        if results:
+            #below is some code for image representations of your interests
+            #Very neato ;)
+            BING_KEY = "580DDBFFD1A4581F90038B9D5B80BA065FEFE4E7"
+            
+            #LOCAL WEB_PROXY = 'http://mainproxy.nottingham.ac.uk:8080'    
+            #LOCAL search = WebSearch( proxy=WEB_PROXY, bing_key=BING_KEY )
+            search = WebSearch( bing_key=BING_KEY )
+            
+            data = "["
+            
+            for row in results:
+                #the name of the term
+                term = row[ 'term' ]
+                 
+                #the number of times the user has seen this term
+                total_appearances = row[ 'total_appearances' ] 
+                
+                #the number of documents the term has been seen in
+                doc_appearances = row[ 'doc_appearances' ]
+                
+                #the unix timestamp of when the term was last seen
+                last_seen = row[ 'last_seen' ]
+                
+                #the term frequency in the users model (tf)
+                frequency = total_appearances / user [ "total_term_appearances" ]
+
+                #at this point there may be no count yet
+                #TODO: check that this "relevance tdidf is correct"
+                if ( row[ 'count' ] > 0 ) :
+                    importance = row[ 'count' ] / TOTAL_WEB_DOCUMENTS
+                    relevance = ( frequency * ( 1 / importance ) )
+                
+                
+                data += """{
+                        'term':'%s',
+                        'relevance':%f,
+                        'total_appearances':%d,
+                        'urls':%s
+                    },""" % (
+                    term,
+                    relevance,
+                    total_appearances,   
+                    search.getBingImage( term )
+                )    
+                
+            data = data[:-1].replace("u'", "'") + "]"                            
+            return template( 'image_cloud_template', data=data)
+    except Exception, e:
+        return error( e )    
+    
+#///////////////////////////////////////////////  
+
+#//////////////////////////////////////////////////////////
 # DATAWARE WEB-API CALLS
 #//////////////////////////////////////////////////////////
  
@@ -61,7 +149,7 @@ def invoke_request():
 def register_request( user_name = None ):
 
     try:
-        shared_secret = request.forms.get( 'shared_secret' )
+        shared_secret = request.forms.get( 'access_token' )
         client_id = request.forms.get( 'client_id' )
         resource_id = request.forms.get( 'resource_id' )
         query = request.forms.get( 'query' ).replace( '\r\n','\n' )
@@ -76,7 +164,7 @@ def register_request( user_name = None ):
             expiry_time 
         )
         
-        #the result, if successful, will include an access_code
+        #the result, if successful, will include an processing_token
         return result
     
     except Exception, e:

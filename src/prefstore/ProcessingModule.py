@@ -58,23 +58,34 @@ class ProcessingModule( object ) :
     def __del__(self):
         if self.db.connected: 
             self.db.close(); 
-        
-        
+       
+         
     #///////////////////////////////////////////////
 
 
-    def format_process_failure( self, error, msg ):
+    def format_register_success( self, access_token ):
+        
+        if ( access_token ) :
+            json_response = { 'success': True, 'access_token': access_token }
+        else : 
+            json_response = { 'success': True }
+        
+        return json.dumps( json_response );
+           
+         
+    #///////////////////////////////////////////////
+
+
+    def format_register_failure( self, error, msg ):
         
         json_response = { 
             'success': False,
-            'error':{
-                'type':error,
-                'message':msg
-            }
+            'error':error,
+            'error_description':msg
         } 
         
         return json.dumps( json_response );
-        
+          
         
     #///////////////////////////////////////////////
     
@@ -86,8 +97,22 @@ class ProcessingModule( object ) :
         else : 
             json_response = { 'success': True }
         
-        #TODO: make sure this ignores an empty return
         return json.dumps( json_response );
+    
+              
+    #///////////////////////////////////////////////
+
+
+    def format_process_failure( self, error, msg ):
+      
+        json_response = { 
+            'success': False,
+            'error':error,
+            'error_description':msg
+        } 
+        
+        return json.dumps( json_response );
+          
     
      
     #///////////////////////////////////////////////
@@ -97,7 +122,7 @@ class ProcessingModule( object ) :
         
         if access_token is None :
             return self.format_process_failure(
-                "AccessException",
+                "access_exception",
                 "Access token has not been supplied"
             ) 
 
@@ -105,7 +130,7 @@ class ProcessingModule( object ) :
             parameters = json.loads( jsonParams ) if jsonParams else {}
         except:
             return self.format_process_failure(
-                "AccessException",
+                "access_exception",
                 "incorrectly formatted JSON parameters"
             ) 
     
@@ -113,7 +138,7 @@ class ProcessingModule( object ) :
             request = self.db.fetch_request( access_token )
             if request is None:
                 return self.format_process_failure(
-                    "AccessException",
+                    "access_exception",
                     "Invalid access token"
                 )
              
@@ -123,7 +148,7 @@ class ProcessingModule( object ) :
                         
         except:
             return self.format_process_failure(
-                "AccessException",
+                "access_exception",
                 "Database problems are currently being experienced"
             ) 
 
@@ -133,7 +158,7 @@ class ProcessingModule( object ) :
         #TODO: Should probably log exceptions like these                           
         except Exception, e:
             return self.format_process_failure(
-                "ProcessingException",
+                "processing_exception",
                 "Compile-time failure - %s:%s" % 
                 ( type( e ).__name__,  e )
             ) 
@@ -147,7 +172,7 @@ class ProcessingModule( object ) :
         except:
            
             return self.format_process_failure(
-                "ProcessingException",
+                "processing_exception",
                 "Run-time failure - %s " % str( sys.exc_info() )
             ) 
 
@@ -182,20 +207,20 @@ class ProcessingModule( object ) :
         #check that the shared_secret is correct for this user_id
         try:
             if ( not self.db.authenticate( user_name, shared_secret ) ) :
-                return self.format_process_failure(
-                    "RegisterException",
+                return self.format_register_failure(
+                    "registration_failure",
                     "incorrect user_id or shared_secret"
                 ) 
         except:    
-            return self.format_process_failure(
-                "RegisterException",
+            return self.format_register_failure(
+                "registration_failure",
                 "Database problems are currently being experienced"
             ) 
         
         #check that the client_id exists and is valid
         if not ( client_id ):
-            return self.format_process_failure(
-                "RegisterException",
+            return self.format_register_failure(
+                "registration_failure",
                 "A valid client ID has not been provided"
             )  
         
@@ -203,10 +228,9 @@ class ProcessingModule( object ) :
         try:
             compile( query, '', 'exec' )
         except:
-            return self.format_process_failure(
-                "RegisterException",
-                "Compilation error occurred: %s" % 
-                ( str( sys.exc_info() ) )
+            return self.format_register_failure(
+                "registration_failure",
+                "Compilation error"
             ) 
             
         #TODO: check that the expiry time is valid
@@ -226,20 +250,20 @@ class ProcessingModule( object ) :
                 query 
             )
                        
-            return self.format_process_success(
+            return self.format_register_success(
                 { "access_token" : access_token } 
             ) 
         
         #if the user access_token already exists an Integrity Error will be thrown
         except MySQLdb.IntegrityError:
-            return self.format_process_failure(
-                "RegisterException",
+            return self.format_register_failure(
+                "registration_failure",
                 "An identical request already exists"
             ) 
               
         except:    
-            return self.format_process_failure(
-                "RegisterException",
+            return self.format_register_failure(
+                "registration_failure",
                 "Database problems are currently being experienced"
             ) 
             
@@ -252,27 +276,27 @@ class ProcessingModule( object ) :
         #check that the shared_secret is correct for this user_id
         try:
             if not access_token :
-                return self.format_process_failure(
-                    "DeregisterException",
+                return self.format_register_failure(
+                    "deregister_failure",
                     "Identifying access token not supplied"
                 ) 
                 
             if not self.db.authenticate( user_name, shared_secret ) :
-                return self.format_process_failure(
-                    "DeregisterException",
+                return self.format_register_failure(
+                    "deregister_failure",
                     "Incorrect user_name or shared_secret"
                 ) 
     
             if self.db.delete_request( access_token, user_name ) :
-                return self.format_process_success() 
+                return self.format_register_success() 
             else :
-                return self.format_process_failure(
-                    "DeregisterException",
+                return self.format_register_failure(
+                    "deregister_failure",
                     "Request with that access token could not found"
                 ) 
         except:    
-            return self.format_process_failure(
-                "DeregisterException",
+            return self.format_register_failure(
+                "deregister_failure",
                 "Database problems are currently being experienced"
             ) 
             

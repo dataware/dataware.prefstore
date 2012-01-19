@@ -89,7 +89,7 @@ class PrefstoreDB( object ):
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
             
         """  % ( DB_NAME, TBL_TERM_APPEARANCES, TBL_USER_DETAILS, TBL_TERM_DICTIONARY ),
-       
+      
         TBL_USER_DETAILS : """
             CREATE TABLE %s.%s (
             user_id varchar(256) NOT NULL,
@@ -99,7 +99,8 @@ class PrefstoreDB( object ):
             last_distill int(10) unsigned NOT NULL,
             last_message int(10) unsigned NOT NULL,
             total_term_appearances bigint(20) NOT NULL DEFAULT 0,
-            registered int(10) unsigned,            
+            registered int(10) unsigned,
+            catalog_uri varchar(256) DEFAULT NULL,            
             PRIMARY KEY (user_id), UNIQUE KEY `UNIQUE` (`user_name`) ) 
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_USER_DETAILS ),   
@@ -265,8 +266,9 @@ class PrefstoreDB( object ):
             
             query = """
                 INSERT INTO %s.%s 
-                ( user_id, user_name, email, total_documents, last_distill, last_message, total_term_appearances, registered ) 
-                VALUES ( %s, null, null, 0, 0, 0, 0, null )
+                ( user_id, user_name, email, total_documents, last_distill, 
+                last_message, total_term_appearances, registered, catalog_uri ) 
+                VALUES ( %s, null, null, 0, 0, 0, 0, null, null )
             """  % ( self.DB_NAME, self.TBL_USER_DETAILS, '%s' ) 
 
             self.cursor.execute( query, ( user_id ) )

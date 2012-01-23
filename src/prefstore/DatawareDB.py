@@ -7,6 +7,8 @@ import MySQLdb
 import ConfigParser
 import hashlib
 import logging
+import base64
+import random
 log = logging.getLogger( "console_log" )
 
 
@@ -35,15 +37,15 @@ def safety_mysql( fn ) :
 #///////////////////////////////////////
 
     
-class DatawareDB( object ):
+class DataDB( object ):
     ''' classdocs '''
     
     DB_NAME = 'prefstore'
     TBL_DATAWARE_QUERIES = 'tblDatawareQueries'
-    TBL_DATAWARE_SECRETS = 'tblDatawareSecrets'
+    TBL_DATAWARE_CATALOGS = 'tblDatawareCatalogs'
+    TBL_DATAWARE_INSTALLS = 'tblDatawareInstalls'
     CONFIG_FILE = "prefstore.cfg"
     SECTION_NAME = "DatawareDB"
-    
     
     #///////////////////////////////////////
 
@@ -52,24 +54,38 @@ class DatawareDB( object ):
                
         TBL_DATAWARE_QUERIES : """
             CREATE TABLE %s.%s (
-            access_token varchar(256) NOT NULL,
-            client_id varchar(256) NOT NULL,
-            user_name varchar(256) NOT NULL,
-            expiry_time int(11) unsigned NOT NULL,
-            query text NOT NULL,
-            checksum varchar(256) NOT NULL,
-            PRIMARY KEY (access_token) USING BTREE,
-            UNIQUE KEY UNIQUE (client_id,user_name,checksum) )
-            ENGINE=InnoDB DEFAULT CHARSET=latin1;
+                access_token varchar(256) NOT NULL,
+                client_id varchar(256) NOT NULL,
+                user_name varchar(256) NOT NULL,
+                expiry_time int(11) unsigned NOT NULL,
+                query text NOT NULL,
+                checksum varchar(256) NOT NULL,
+                PRIMARY KEY (access_token) USING BTREE,
+                UNIQUE KEY UNIQUE (client_id,user_name,checksum)
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_DATAWARE_QUERIES ),
        
-        TBL_DATAWARE_SECRETS : """ 
+        TBL_DATAWARE_CATALOGS : """ 
             CREATE TABLE %s.%s (
-            user_name varchar(256) NOT NULL,
-            shared_secret varchar(256) NOT NULL,
-            PRIMARY KEY (user_name) ) 
-            ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_DATAWARE_QUERIES ),            
+                catalog_uri varchar(256) NOT NULL,                
+                resource_id varchar(256) NOT NULL,
+                registered int(10) unsigned DEFAULT NULL,
+                PRIMARY KEY (catalog_address)
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+        """  % ( DB_NAME, TBL_DATAWARE_CATALOGS ),  
+        
+        TBL_DATAWARE_INSTALLS : """ 
+            CREATE TABLE %s.%s (
+                user_name varchar(256) NOT NULL,
+                catalog_uri varchar(256) NOT NULL,                
+                access_token varchar(256) NOT NULL,
+                state varchar(256) NOT NULL,
+                registered int(10) unsigned DEFAULT NULL,
+                PRIMARY KEY (user_name) 
+                FOREIGN KEY (user_id) REFERENCES %s(user_id) 
+                ON DELETE CASCADE ON UPDATE CASCADE,
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+        """  % ( DB_NAME, TBL_DATAWARE_INSTALLS, TBL_DATAWARE_CATALOGS ),            
     } 
     
         
@@ -89,7 +105,7 @@ class DatawareDB( object ):
         self.password =  Config.get( self.SECTION_NAME, "password" )
         self.dbname = Config.get( self.SECTION_NAME, "dbname" )
         self.connected = False;
-
+        
         
     #///////////////////////////////////////
     
@@ -140,7 +156,7 @@ class DatawareDB( object ):
     
     
     @safety_mysql        
-    def checkTables( self ):
+    def check_tables( self ):
         
         log.info( "%s: checking system table integrity..." % self.name );
                 
@@ -166,12 +182,15 @@ class DatawareDB( object ):
         """ % self.DB_NAME )
         
         tables = [ row[ "table_name" ] for row in self.cursor.fetchall() ]
- 
-        if not self.TBL_DATAWARE_QUERIES in tables : 
-            self.createTable( self.TBL_DATAWARE_QUERIES )
-        if not self.TBL_DATAWARE_SECRETS in tables : 
-            self.createTable( self.TBL_DATAWARE_SECRETS )
-        self.commit();
+        
+        #if they don't exist for some reason, create them.    
+        for t, q in self.createQueries.iteritems():
+            if not t in tables : 
+                log.warning( "%s: Creating missing system table: '%s'" % ( self.name, t ) );
+                self.cursor.execute( q )
+        
+        self.commit()
+        
         
         
     #///////////////////////////////////////
@@ -257,36 +276,105 @@ class DatawareDB( object ):
         return row
     
     
-    #///////////////////////////////////////////////
-
-
-    @safety_mysql   
-    def update_tfidf( self ):
-        """This is currently just a debugging test function
-        """
+    #///////////////////////////////////////
+    
+    
+    @safety_mysql                    
+    def insert_catalog( self, catalog_uri, resource_id ):
+            
+        if ( catalog_uri ):
+            
+            log.info( 
+                "%s %s: Inserting catalog '%s' in database with resource_id '%s'" 
+                % ( self.name, "insert_catalog", catalog_uri, resource_id ) 
+            );
+            
+            
+            query = """
+                  INSERT INTO %s.%s ( catalog_uri, resource_id, registered ) 
+                  VALUES ( %s, %s, %s )
+              """  % ( self.DB_NAME, self.TBL_DATAWARE_CATALOGS, '%s', '%s', '%s', )
+            
+            state = self.generateAccessToken()
+            self.cursor.execute( query, (  catalog_uri, resource_id ) )
+                
+            return state;
         
-        f = open( 'doc_similarity.py', 'r' )
-        code = f.read()
+        else:
+            log.warning( 
+                "%s %s: Catalog insert requested with incomplete details" 
+                % (  self.name, "insert_catalog", ) 
+            );
+            return None;    
         
-        query = """
-            UPDATE %s.%s SET query=%s WHERE access_token=4444
-        """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s' ) 
-        self.cursor.execute( query, code )
-        self.commit()
+        
+    #///////////////////////////////////////
+    
+    
+    @safety_mysql                    
+    def fetch_catalog( self, catalog_uri ):
+            
+        if catalog_uri :
+            query = """
+                SELECT * FROM %s.%s t where catalog_uri = %s 
+            """  % ( self.DB_NAME, self.TBL_DATAWARE_CATALOGS, '%s' ) 
+        
+            self.cursor.execute( query, ( catalog_uri, ) )
+            row = self.cursor.fetchone()
 
-
+            if not row is None:
+                return row
+            else :
+                return None
+        else :
+            return None   
+            
+        
+                
+    #///////////////////////////////////////
+    
+    
+    @safety_mysql                    
+    def insert_install( self, user_name, catalog_uri, state ):
+            
+        if ( user_name and catalog_uri ):
+            
+            log.info( 
+                "%s %s: Inserting user '%s' catalog as '%s' in database" 
+                % ( self.name, "insert_catalog", user_name, catalog_uri, ) 
+            );
+            
+            
+            query = """
+                  INSERT INTO %s.%s ( user_name, catalog_uri, access_token, state, registered ) 
+                  VALUES ( %s, %s, null, %s, null )
+              """  % ( self.DB_NAME, self.TBL_DATAWARE_CATALOGS, '%s', '%s', '%s', )
+            
+            state = self.generateAccessToken()
+            self.cursor.execute( query, ( user_name, catalog_uri, state ) )
+                
+            return state;
+        
+        else:
+            log.warning( 
+                "%s %s: Installation insert requested with incomplete details" 
+                % (  self.name, "insert_catalog", ) 
+            );
+            return None;    
+        
+        
     #///////////////////////////////////////////////
     
     
     @safety_mysql       
-    def authenticate( self, user_name, shared_secret ) :
+    def authenticate( self, user_name, access_token ) :
         
-        if user_name and shared_secret:
+        if user_name and access_token:
             query = """
-                SELECT 1 FROM %s.%s WHERE user_name = %s AND shared_secret = %s  
-            """  % ( self.DB_NAME, self.TBL_DATAWARE_SECRETS, '%s', '%s' ) 
+                SELECT 1 FROM %s.%s WHERE user_name = %s AND access_token = %s  
+            """  % ( self.DB_NAME, self.TBL_DATAWARE_CATALOGS, '%s', '%s' ) 
 
-            self.cursor.execute( query, ( user_name, shared_secret ) )
+            self.cursor.execute( query, ( user_name, access_token ) )
             row = self.cursor.fetchone()
             
             if ( row is None ):
@@ -296,3 +384,18 @@ class DatawareDB( object ):
         else:    
             return False
 
+
+    #///////////////////////////////////////////////
+
+             
+    def generateAccessToken( self ):
+        
+        token = base64.b64encode(  
+            hashlib.sha256( 
+                str( random.getrandbits( 256 ) ) 
+            ).digest() 
+        )  
+            
+        #replace plus signs with asterisks. Plus signs are reserved
+        #characters in ajax transmissions, so just cause problems
+        return token.replace( '+', '*' ) 

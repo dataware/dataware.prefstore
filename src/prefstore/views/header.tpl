@@ -45,7 +45,7 @@
 <div class="top">
 	<div class="header">
 		<div class="logo">
-			<img src="./static/dwlogofull.png"/>
+			<img src="./static/pslogofull.png"/>
 		</div>
 		
 		%if user:

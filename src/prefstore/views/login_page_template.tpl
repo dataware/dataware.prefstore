@@ -31,7 +31,7 @@
 
 	<div style="margin:25px auto; padding:15px; border:1px dotted #cccccc; width:230px;">
 		<div> 
-			<img src="./static/dwlogofull.png" width="220px"/>
+			<img src="./static/pslogofull.png" width="220px"/>
 		</div>
 		<div style="text-align:left; font-style:italic; font-family:georgia; font-size:13px; color: #888888; margin:10px 0px 18px 7px;">
 			Please login with one of the following providers:

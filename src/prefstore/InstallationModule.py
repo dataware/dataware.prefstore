@@ -4,14 +4,14 @@ Created on 12 April 2011
 """
 
 from new import * #@UnusedWildImport
-import json
 import base64
-import random
 import hashlib
+import json
 import logging
-import urllib2
-import urllib
+import random
 import re
+import urllib
+import urllib2
 
 #setup logger for this module
 log = logging.getLogger( "console_log" )
@@ -36,7 +36,10 @@ class CatalogException ( Exception ):
         
 class InstallationModule( object ) :
     
-
+         
+    #///////////////////////////////////////////////
+    
+    
     def __init__( self, resource_name, redirect_uri, datadb, web_proxy = None ):
         
         self.db = datadb;
@@ -44,36 +47,74 @@ class InstallationModule( object ) :
         self.redirect_uri = redirect_uri
         self.web_proxy = web_proxy  
 
-         
+
     #///////////////////////////////////////////////
 
-
-    def resource_register( self, catalog_uri ):
-    
+            
+    def initiate_install( self, user_id, catalog_uri ):
+        
         #check that a valid catalog_uri has been supplied
-        if not self.is_valid_uri( catalog_uri ):
+        if not self._is_valid_uri( catalog_uri ):
             raise ParameterException( "invalid catalog URI" )
     
         #also confirm that its and endpoint (not a directory)
-        if catalog_uri[-1] == "/":
+        if catalog_uri[ -1 ] == "/":
             raise ParameterException( "catalog URI must not end with /" )
         
-        #determine if we have already registered at this resource
-        if not self.db.fetch_catalog( catalog_uri ):
+        #obtain the resource_id assigned by the catalog - or
+        #if it doesn't exist, register ourselves at the catalog
+        resource_id = self._check_registration( catalog_uri )
+       
+        #check to see if we have already made the install request
+        install = self.db.fetch_install( user_id, catalog_uri ) 
+        
+        #if we have, use the state details we already have:
+        if ( install ):
+            state = install[ "state" ]
             
+        #otherwise initiate the request, leaving it pending in
+        #the database and get a new state id.        
+        else:
+            state = self.db.insert_install( user_id, catalog_uri ) 
+            self.db.commit()
+            
+        #finally build the uri that we will redirect the user to
+        data = urllib.urlencode({
+            'resource_id': resource_id,
+            'state': state,            
+            'redirect_uri': self.redirect_uri, })
+        
+        url = "%s/resource_request?%s" % ( catalog_uri, data )
+      
+        return url 
+            
+    
+    #///////////////////////////////////////////////
+
+
+    def _check_registration( self, catalog_uri ):
+    
+        #determine if we have already registered at this resource
+        catalog = self.db.fetch_catalog( catalog_uri )
+        
+        #if so simply return the resource_id the catalog gave us...
+        if catalog:
+            return catalog[ "resource_id" ]
+        
+        #and if not register ourselves with the catalog, and get one...
+        else:
             catalog_response = self._make_registration_request( catalog_uri )
             resource_id = self._parse_registration_results( catalog_response )
             self.db.insert_catalog( catalog_uri, resource_id )
+            self.db.commit()
             return resource_id
-        
-        return None
         
 
     #///////////////////////////////////////////////
 
+
     def _is_valid_uri( self, uri ):
         
-        print "uri=%s" % ( uri, )
         if not uri: return False
         
         regex = re.compile(
@@ -146,7 +187,7 @@ class InstallationModule( object ) :
         except:
             raise CatalogException( "Catalog failed to return resource id" ) 
 
-            
+         
     #///////////////////////////////////////////////
 
              

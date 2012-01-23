@@ -4,7 +4,14 @@
 <!---------------------------------------------------------------- 
 	PAGE SCRIPTS
 ------------------------------------------------------------------>
+<!-- Include required JS files -->
+<script type="text/javascript" src="./static/jquery-1.6.min.js"></script> 
+<script type="text/javascript" src="static/jquery-impromptu.3.2.js"></script>
+
+<link href="static/impromptu.css" rel="stylesheet" type="text/css" />
+
 <script type="text/javascript">
+
 	/**
 	 * Function that redirects the user to the server's openid login
 	 */ 
@@ -12,8 +19,37 @@
 		window.open( "login?provider=" + provider, "_self" )
 	}
 
-</script>
 
+	////////////////////////////////////////////////////
+
+	function install_resource() {
+		$.ajax({
+			type: 'GET',
+			url: '/install_request?catalog_uri=' +  $("#catalog_uri").val(),
+			success: function( data, status  ) {
+
+				data = eval( '(' + data + ')' );
+				if ( data.success ) {
+					window.location = data.redirect;
+					error_box( "We are currently unable to process this installation. Please try again later." );
+				} else {
+					error_box( data.error );
+				}
+			},
+			error: function( data, status ) {
+				error_box( "We are currently unable to process this installation. Please try again later." );
+			}
+		});
+	}
+
+	////////////////////////////////////////////////////
+
+	function error_box( error ) {
+		msg = "<span class='error_box'>ERROR:</span>&nbsp;&nbsp;" + error
+		$.prompt( msg,  {  buttons: { Continue: true }, } )
+	}
+
+</script>
 
 <!---------------------------------------------------------------- 
 	HEADER SECTION
@@ -39,17 +75,14 @@
 			supply the address of your catalog:
 		</div>
 		<div id="loggedOutBox" >
-        <form action="install" method="GET" >
+        <form action="javascript:install_resource()">
 			<div style="padding:0 10 0 8; float:left; border:0px dotted; font-size:12px; font-family:georgia; color:#555555;">
 	            
 	            <div style="margin-top:5px;">
 					Catalog URI:
-					%if error:
-						<span class="loginMessage"> {{error}}</span>
-					%end
 				</div>
 		        <div >
-			        <input id="catalog_uri" class="text" name="catalog_uri" value="{{catalog_uri}}"  type="text" size="42" />
+			        <input id="catalog_uri" class="text" name="catalog_uri" type="text" size="42" />
 					<input type="submit" value="Install >>" style="float:bottom; " />
 				</div>
 			</div>

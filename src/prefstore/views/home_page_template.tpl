@@ -201,7 +201,7 @@
 				</div>
 				<div class="table_item">
 					<div class="table_field_name">Datasphere:</div>
-					<div class="table_field_value"><i>unconnected</i></div>
+					<div class="table_field_value"><a href="install">install to catalog</a></div>
 				</div>
 			</div>
 		</div>

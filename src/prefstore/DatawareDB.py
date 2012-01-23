@@ -9,6 +9,7 @@ import hashlib
 import logging
 import base64
 import random
+import time
 log = logging.getLogger( "console_log" )
 
 
@@ -56,12 +57,12 @@ class DataDB( object ):
             CREATE TABLE %s.%s (
                 access_token varchar(256) NOT NULL,
                 client_id varchar(256) NOT NULL,
-                user_name varchar(256) NOT NULL,
+                user_id varchar(256) NOT NULL,
                 expiry_time int(11) unsigned NOT NULL,
                 query text NOT NULL,
                 checksum varchar(256) NOT NULL,
                 PRIMARY KEY (access_token) USING BTREE,
-                UNIQUE KEY UNIQUE (client_id,user_name,checksum)
+                UNIQUE KEY UNIQUE (client_id,user_id,checksum)
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_DATAWARE_QUERIES ),
        
@@ -70,20 +71,20 @@ class DataDB( object ):
                 catalog_uri varchar(256) NOT NULL,                
                 resource_id varchar(256) NOT NULL,
                 registered int(10) unsigned DEFAULT NULL,
-                PRIMARY KEY (catalog_address)
+                PRIMARY KEY (catalog_uri)
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_DATAWARE_CATALOGS ),  
         
         TBL_DATAWARE_INSTALLS : """ 
             CREATE TABLE %s.%s (
-                user_name varchar(256) NOT NULL,
+                user_id varchar(256) NOT NULL,
                 catalog_uri varchar(256) NOT NULL,                
-                access_token varchar(256) NOT NULL,
+                access_token varchar(256),
                 state varchar(256) NOT NULL,
                 registered int(10) unsigned DEFAULT NULL,
-                PRIMARY KEY (user_name) 
-                FOREIGN KEY (user_id) REFERENCES %s(user_id) 
-                ON DELETE CASCADE ON UPDATE CASCADE,
+                PRIMARY KEY (user_id),
+                FOREIGN KEY (catalog_uri) REFERENCES %s(catalog_uri) 
+                ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_DATAWARE_INSTALLS, TBL_DATAWARE_CATALOGS ),            
     } 
@@ -289,14 +290,13 @@ class DataDB( object ):
                 % ( self.name, "insert_catalog", catalog_uri, resource_id ) 
             );
             
-            
             query = """
                   INSERT INTO %s.%s ( catalog_uri, resource_id, registered ) 
                   VALUES ( %s, %s, %s )
               """  % ( self.DB_NAME, self.TBL_DATAWARE_CATALOGS, '%s', '%s', '%s', )
             
             state = self.generateAccessToken()
-            self.cursor.execute( query, (  catalog_uri, resource_id ) )
+            self.cursor.execute( query, ( catalog_uri, resource_id, time.time(), ) )
                 
             return state;
         
@@ -335,23 +335,25 @@ class DataDB( object ):
     
     
     @safety_mysql                    
-    def insert_install( self, user_name, catalog_uri, state ):
+    def insert_install( self, user_id, catalog_uri ):
             
-        if ( user_name and catalog_uri ):
+        if ( user_id and catalog_uri ):
             
             log.info( 
-                "%s %s: Inserting user '%s' catalog as '%s' in database" 
-                % ( self.name, "insert_catalog", user_name, catalog_uri, ) 
+                "%s %s: Initiating user '%s' installation to '%s' in database" 
+                % ( self.name, "insert_catalog", user_id, catalog_uri, ) 
             );
             
             
             query = """
-                  INSERT INTO %s.%s ( user_name, catalog_uri, access_token, state, registered ) 
-                  VALUES ( %s, %s, null, %s, null )
-              """  % ( self.DB_NAME, self.TBL_DATAWARE_CATALOGS, '%s', '%s', '%s', )
+                  INSERT INTO %s.%s 
+                  ( user_id, catalog_uri, access_token, state, registered ) 
+                  VALUES ( %s, %s, null, %s, %s )
+              """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s', '%s', '%s' )
             
             state = self.generateAccessToken()
-            self.cursor.execute( query, ( user_name, catalog_uri, state ) )
+            self.cursor.execute( query, 
+                ( user_id, catalog_uri, state, time.time(), ) )
                 
             return state;
         
@@ -362,7 +364,51 @@ class DataDB( object ):
             );
             return None;    
         
+
+    #///////////////////////////////////////
+    
+    
+    @safety_mysql                    
+    def fetch_install_by_state( self, state ):
+            
+        if state :
+            query = """
+                SELECT * FROM %s.%s t where state = %s 
+            """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s' ) 
         
+            self.cursor.execute( query, ( state, ) )
+            row = self.cursor.fetchone()
+
+            if not row is None:
+                return row
+            else :
+                return None
+        else :
+            return None
+        
+        
+    #///////////////////////////////////////
+    
+    
+    @safety_mysql                    
+    def fetch_install( self, user_id, catalog_uri ):
+            
+        if user_id and catalog_uri:
+            query = """
+                SELECT * FROM %s.%s t WHERE user_id = %s AND catalog_uri = %s
+            """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s' ) 
+        
+            self.cursor.execute( query, ( user_id, catalog_uri ) )
+            row = self.cursor.fetchone()
+
+            if not row is None:
+                return row
+            else :
+                return None
+        else :
+            return None   
+        
+            
     #///////////////////////////////////////////////
     
     

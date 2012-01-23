@@ -12,7 +12,7 @@ from PrefstoreDB import *           #@UnusedWildImport
 import OpenIDManager
 import logging.handlers
 import validictory
-
+import time
 
 #TODO: Still need a logout even when the person hasn't registered (maybe call it cancel?)
 #TODO: how to prevent accidental "google logins". Is this you?, etc.
@@ -30,7 +30,7 @@ class std_writer( object ):
     
     def write(self, data):
         data = data.replace( '\n', '' ) \
-                  .replace( '\t', '' )
+                   .replace( '\t', '' )
         if len( data ) > 0 :
             log.error( self.msg + ": " + data )
         
@@ -128,13 +128,82 @@ def get_images():
     except Exception, e:
         return error( e )    
     
-#///////////////////////////////////////////////  
-
+    
 #//////////////////////////////////////////////////////////
 # DATAWARE WEB-API CALLS
 #//////////////////////////////////////////////////////////
 
 
+def format_success( url, ):
+   
+    return json.dumps({
+        'success':True, 
+        'redirect':url,  
+    })
+        
+
+#///////////////////////////////////////////////
+
+
+def format_failure( cause, error, ):
+   
+    return json.dumps({ 
+        'success':False, 
+        'cause':cause,        
+        'error':error,  
+    })
+        
+
+#///////////////////////////////////////////////
+ 
+ 
+@route( '/install', method = "GET", )
+def install():
+    
+    try:
+        user = check_login()
+        if ( not user ): redirect( ROOT_PAGE )
+    except RegisterException, e:
+        redirect( "/register" )
+    except LoginException, e:
+        return error( e.msg )
+    except Exception, e:
+        return error( e )        
+        
+    return template( 'install_page_template', user=user) 
+    
+
+#///////////////////////////////////////////////
+ 
+ 
+@route( '/install_request', method = "GET" )
+def install_request():
+    
+    try:
+        user = check_login()
+        if ( not user ): redirect( ROOT_PAGE )
+    except RegisterException, e:
+        redirect( "/register" )
+    except LoginException, e:
+        return error( e.msg )
+    except Exception, e:
+        return error( e )        
+
+    catalog_uri = request.GET.get( "catalog_uri", None )
+    
+    # first check that the resource is registered with the catalog 
+    try:
+        url = im.initiate_install( user[ "user_id" ], catalog_uri  )
+        return format_success( url )
+    except ParameterException, e:
+        return format_failure( "resource", e.msg )
+    except CatalogException, e:    
+        return format_failure( "catalog", e.msg )
+        
+        
+#///////////////////////////////////////////////
+   
+    
 @route( '/invoke_request', method = "POST")
 def invoke_request():
     
@@ -143,15 +212,14 @@ def invoke_request():
         jsonParams = request.forms.get( 'parameters' )
         result = pm.invoke_request( 
             access_token, 
-            jsonParams 
-        )
+            jsonParams )
         return result
-    
     except Exception, e:
         raise e
      
 
 #///////////////////////////////////////////////
+ 
  
 @route( '/user/:user_name/permit_request', method = "POST" )
 def permit_request( user_name = None ):
@@ -348,59 +416,8 @@ def valid_email( str ):
 
 
 def valid_name( str ):
-    
+
     return re.search( "^[A-Za-z0-9 ']{3,64}$", str )
-
-
-#///////////////////////////////////////////////
-
-
-def format_failure( cause, error, ):
-   
-    return json.dumps({ 
-        'success':False, 
-        'cause':cause,        
-        'error':error,  
-    })
-        
-
-
-#///////////////////////////////////////////////
- 
- 
-@route( '/install', method = "GET" )
-def install():
-    
-    #make sure that the user is logged in
-    try:
-        user_id = extract_user_id()
-    except LoginException, e:
-        return error( e.msg )
-    except Exception, e:
-        return error( e )
-
-    submission = request.GET.get( "submission", False )
-    catalog_uri = request.GET.get( "catalog_uri", None )
-    
-    if ( submission ): 
-        try:
-            resource_id = im.resource_register( catalog_uri )
-        except ParameterException, e:
-            return format_failure( "resource", e.msg )
-        except CatalogException, e:    
-            return format_failure( "catalog", e.msg )
-        
-    else:
-        return "no submission"
-    
-    return resource_id;
-
-    return template( 
-        'install_page_template', 
-        user=None, 
-        catalog_uri=catalog_uri,
-        error=error ) 
-
 
 
 #///////////////////////////////////////////////
@@ -482,7 +499,7 @@ def user_register():
 
 
 def error( e ):
-    return "%s: %s" % ( type( e ).__name__, e )
+    return  "An error has occurred: %s" % ( e )
 
       
 #///////////////////////////////////////////////  
@@ -509,7 +526,7 @@ def extract_user_id():
             delete_authentication_cookie()
             raise LoginException( "You are logged in but have no user_id. Resetting." )
     else:
-        return None
+        None
 
   
 #///////////////////////////////////////////////  
@@ -603,7 +620,6 @@ def submit_distill():
             % ( "prefstore", user_id ) 
         )
         return "{'success':false,'cause':'required parameters missing'}"
-        
         
     try:
         #convert the data into a json object
@@ -1104,7 +1120,7 @@ if __name__ == '__main__' :
     HOST = "0.0.0.0"  
     BOTTLE_QUIET = True 
     ROOT_PAGE = "/"
-    RESOURCE_NAME = "Prefstore2"
+    RESOURCE_NAME = "Prefstore6"
     REDIRECT_URI = "http://www.prefstore.org/install_success"
     #LOCAL! REALM = "http://localhost:80"
     #LOCAL! WEB_PROXY = "http://mainproxy.nottingham.ac.uk:8080"

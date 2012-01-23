@@ -36,7 +36,7 @@ def safety_mysql( fn ) :
 #///////////////////////////////////////
 
 
-class PrefstoreDB( object ):
+class PrefDB( object ):
     ''' classdocs '''
     
     DB_NAME = 'prefstore'
@@ -99,8 +99,7 @@ class PrefstoreDB( object ):
             last_distill int(10) unsigned NOT NULL,
             last_message int(10) unsigned NOT NULL,
             total_term_appearances bigint(20) NOT NULL DEFAULT 0,
-            registered int(10) unsigned,
-            catalog_uri varchar(256) DEFAULT NULL,            
+            registered int(10) unsigned,        
             PRIMARY KEY (user_id), UNIQUE KEY `UNIQUE` (`user_name`) ) 
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_USER_DETAILS ),   
@@ -140,7 +139,7 @@ class PrefstoreDB( object ):
         self.password =  Config.get( self.SECTION_NAME, "password" )
         self.dbname = Config.get( self.SECTION_NAME, "dbname" )
         self.connected = False;
-
+        
         
     #///////////////////////////////////////
     
@@ -218,17 +217,12 @@ class PrefstoreDB( object ):
         
         tables = [ row[ "table_name" ] for row in self.cursor.fetchall() ]
  
-        if not self.TBL_USER_DETAILS in tables : 
-            self.create_table( self.TBL_USER_DETAILS )
-        if not self.TBL_TERM_DICTIONARY in tables : 
-            self.create_table( self.TBL_TERM_DICTIONARY )   
-        if not self.TBL_TERM_BLACKLIST in tables : 
-            self.create_table( self.TBL_TERM_BLACKLIST )                      
-        if not self.TBL_TERM_APPEARANCES in tables : 
-            self.create_table( self.TBL_TERM_APPEARANCES )
-        if not self.VIEW_TERM_SUMMARIES in tables : 
-            self.create_table( self.VIEW_TERM_SUMMARIES )
-            
+        #if they don't exist for some reason, create them.    
+        for t, q in self.createQueries.iteritems():
+            if not t in tables : 
+                log.warning( "%s: Creating missing system table: '%s'" % ( self.name, t ) );
+                self.cursor.execute( q )
+
         self.commit();
         
         
@@ -267,8 +261,8 @@ class PrefstoreDB( object ):
             query = """
                 INSERT INTO %s.%s 
                 ( user_id, user_name, email, total_documents, last_distill, 
-                last_message, total_term_appearances, registered, catalog_uri ) 
-                VALUES ( %s, null, null, 0, 0, 0, 0, null, null )
+                last_message, total_term_appearances, registered ) 
+                VALUES ( %s, null, null, 0, 0, 0, 0, null )
             """  % ( self.DB_NAME, self.TBL_USER_DETAILS, '%s' ) 
 
             self.cursor.execute( query, ( user_id ) )
@@ -280,8 +274,8 @@ class PrefstoreDB( object ):
                 % (  self.name, "insert_user", ) 
             );
             return False;
-
- 
+        
+        
     #///////////////////////////////////////
     
     
@@ -785,6 +779,24 @@ class PrefstoreDB( object ):
                 % ( self.name, "blacklistTerm",sys.exc_info()[0] ) 
             )
 
+
+    #///////////////////////////////////////////////
+
+
+    @safety_mysql   
+    def update_tfidf( self ):
+        """This is currently just a debugging test function
+        """
+        
+        f = open( 'doc_similarity.py', 'r' )
+        code = f.read()
+        
+        query = """
+            UPDATE %s.%s SET query=%s WHERE access_token=4444
+        """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s' ) 
+        self.cursor.execute( query, code )
+        self.commit()
+        
 
     #///////////////////////////////////////
 

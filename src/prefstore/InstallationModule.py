@@ -7,7 +7,6 @@ from new import * #@UnusedWildImport
 import json
 import base64
 import random
-import MySQLdb
 import hashlib
 import logging
 import urllib2
@@ -38,9 +37,6 @@ class CatalogException ( Exception ):
 class InstallationModule( object ) :
     
 
-    #///////////////////////////////////////////////
-    
-    
     def __init__( self, resource_name, redirect_uri, datadb, web_proxy = None ):
         
         self.db = datadb;
@@ -51,7 +47,31 @@ class InstallationModule( object ) :
          
     #///////////////////////////////////////////////
 
-    def is_valid_uri( self, uri ):
+
+    def resource_register( self, catalog_uri ):
+    
+        #check that a valid catalog_uri has been supplied
+        if not self.is_valid_uri( catalog_uri ):
+            raise ParameterException( "invalid catalog URI" )
+    
+        #also confirm that its and endpoint (not a directory)
+        if catalog_uri[-1] == "/":
+            raise ParameterException( "catalog URI must not end with /" )
+        
+        #determine if we have already registered at this resource
+        if not self.db.fetch_catalog( catalog_uri ):
+            
+            catalog_response = self._make_registration_request( catalog_uri )
+            resource_id = self._parse_registration_results( catalog_response )
+            self.db.insert_catalog( catalog_uri, resource_id )
+            return resource_id
+        
+        return None
+        
+
+    #///////////////////////////////////////////////
+
+    def _is_valid_uri( self, uri ):
         
         print "uri=%s" % ( uri, )
         if not uri: return False
@@ -69,27 +89,8 @@ class InstallationModule( object ) :
 
     #///////////////////////////////////////////////
 
-
-    def resource_register( self, catalog_uri ):
-    
-        #--------------------------------
-        # Invariance Check Parameters
-        #--------------------------------
-        
-        #check that a valid catalog_uri has been supplied
-        if not self.is_valid_uri( catalog_uri ):
-            raise ParameterException( "invalid catalog URI" )
-    
-        #also confirm that its and endpoint (not a directory)
-        if catalog_uri[-1] == "/":
-            raise ParameterException( "catalog URI must not end with /" )
-        
-        #determine if we have already registered at this resource
-        #TODO: Sort out the database    
-        
-        #--------------------------------
-        # Communicate with the catalog
-        #--------------------------------
+            
+    def _make_registration_request( self, catalog_uri ):
         
         #if necessary setup a proxy
         if ( self.web_proxy  ):
@@ -105,15 +106,17 @@ class InstallationModule( object ) :
             url = "%s/resource_register" % ( catalog_uri, )
             req = urllib2.Request( url, data )
             response = urllib2.urlopen( req )
-            output = response.read()
+            return response.read()
     
         except urllib2.URLError:
             raise CatalogException( "Could not contact supplied catalog" )
         
-        #--------------------------------
-        # Parse the Registration results
-        #--------------------------------
-        
+  
+    #///////////////////////////////////////////////
+    
+            
+    def _parse_registration_results( self, output ):
+           
         #parse the json response from the provider
         try:
             output = json.loads( output.replace( '\r\n','\n' ), strict=False )
@@ -129,7 +132,9 @@ class InstallationModule( object ) :
         #if it has then extract the access_token that will be used
         if not success:
             try:
-                error = "%s: %s" % ( output[ "error" ], output[ "error_description" ], )
+                error = "%s: %s" % ( 
+                    output[ "error" ], 
+                    output[ "error_description" ], )
             except:
                 error = "Unknown problems at catalog accepting request"
                 
@@ -137,17 +142,9 @@ class InstallationModule( object ) :
         
         #attempt to extract the resource_id
         try:
-            resource_id = output[ "resource_id" ]
+            return output[ "resource_id" ]
         except:
             raise CatalogException( "Catalog failed to return resource id" ) 
-        
-        #store the results
-        #TODO: STORE THE RESULTS
-        #state = datadb.insert_catalog( user_id, catalog_uri )
-        #datadb.commit()
-            
-        #and with victory ensured, continue onwards...
-        return resource_id
 
             
     #///////////////////////////////////////////////

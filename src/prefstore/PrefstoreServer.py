@@ -3,12 +3,19 @@ Created on 12 April 2011
 @author: jog
 """
 from __future__ import division
-from WebCountUpdater import * #@UnusedWildImport
-from bottle import * #@UnusedWildImport
+from WebCountUpdater import *       #@UnusedWildImport
+from bottle import *                #@UnusedWildImport
+from ProcessingModule import *      #@UnusedWildImport
+from InstallationModule import *    #@UnusedWildImport
+from DatawareDB import *            #@UnusedWildImport
+from PrefstoreDB import *           #@UnusedWildImport
 import OpenIDManager
-import ProcessingModule
 import logging.handlers
 import validictory
+
+
+#TODO: Still need a logout even when the person hasn't registered (maybe call it cancel?)
+#TODO: how to prevent accidental "google logins". Is this you?, etc.
 
 #//////////////////////////////////////////////////////////
 # SETUP LOGGING FOR THIS MODULE
@@ -33,6 +40,7 @@ class std_writer( object ):
 #//////////////////////////////////////////////////////////
 
 TOTAL_WEB_DOCUMENTS = 25000000000
+
 
 #//////////////////////////////////////////////////////////
 # DEMO FUNCTIONS
@@ -125,7 +133,8 @@ def get_images():
 #//////////////////////////////////////////////////////////
 # DATAWARE WEB-API CALLS
 #//////////////////////////////////////////////////////////
- 
+
+
 @route( '/invoke_request', method = "POST")
 def invoke_request():
     
@@ -144,9 +153,8 @@ def invoke_request():
 
 #///////////////////////////////////////////////
  
- 
-@route( '/user/:user_name/register_request', method = "POST" )
-def register_request( user_name = None ):
+@route( '/user/:user_name/permit_request', method = "POST" )
+def permit_request( user_name = None ):
 
     try:
         shared_secret = request.forms.get( 'access_token' )
@@ -155,7 +163,7 @@ def register_request( user_name = None ):
         query = request.forms.get( 'query' ).replace( '\r\n','\n' )
         expiry_time = request.forms.get( 'expiry_time' )        
                 
-        result = pm.register_request( 
+        result = pm.permit_request( 
             user_name, 
             client_id,
             shared_secret, 
@@ -340,16 +348,67 @@ def valid_email( str ):
 
 
 def valid_name( str ):
+    
     return re.search( "^[A-Za-z0-9 ']{3,64}$", str )
 
 
 #///////////////////////////////////////////////
 
 
-@route( '/register', method = "GET" )
-def register():
+def format_failure( cause, error, ):
+   
+    return json.dumps({ 
+        'success':False, 
+        'cause':cause,        
+        'error':error,  
+    })
+        
+
+
+#///////////////////////////////////////////////
+ 
+ 
+@route( '/install', method = "GET" )
+def install():
     
-    #TODO: first check the user is logged in!
+    #make sure that the user is logged in
+    try:
+        user_id = extract_user_id()
+    except LoginException, e:
+        return error( e.msg )
+    except Exception, e:
+        return error( e )
+
+    submission = request.GET.get( "submission", False )
+    catalog_uri = request.GET.get( "catalog_uri", None )
+    
+    if ( submission ): 
+        try:
+            resource_id = im.resource_register( catalog_uri )
+        except ParameterException, e:
+            return format_failure( "resource", e.msg )
+        except CatalogException, e:    
+            return format_failure( "catalog", e.msg )
+        
+    else:
+        return "no submission"
+    
+    return resource_id;
+
+    return template( 
+        'install_page_template', 
+        user=None, 
+        catalog_uri=catalog_uri,
+        error=error ) 
+
+
+
+#///////////////////////////////////////////////
+    
+
+@route( '/register', method = "GET" )
+def user_register():
+    
     try:
         user_id = extract_user_id()
     except LoginException, e:
@@ -405,13 +464,12 @@ def register():
             
             #return the user to the home page
             redirect( ROOT_PAGE )
-    
+
+    #if this is the first visit to the page, or there are errors    
     else:
         email = ""
         user_name = ""
         
-    #if this is the first visit to the page, or there are errors
-
     return template( 
         'register_page_template', 
         user=None, 
@@ -1032,7 +1090,8 @@ if __name__ == '__main__' :
     log.addHandler( ch )
     data_log.addHandler( fh )    
             
-    # redirect standard outputs
+    # redirect standard outputs to prevent errors running the process
+    # as a daemon (due to print statements in python socket libraries.
     sys.stdout = std_writer( "stdout" )
     sys.stderr = std_writer( "stderr" )
     
@@ -1041,12 +1100,15 @@ if __name__ == '__main__' :
     #-------------------------------
     EXTENSION_COOKIE = "logged_in"
     PORT = 80
-    #LOCAL! REALM = "http://localhost:80"
     REALM = "http://www.prefstore.org" 
     HOST = "0.0.0.0"  
     BOTTLE_QUIET = True 
     ROOT_PAGE = "/"
-
+    RESOURCE_NAME = "Prefstore2"
+    REDIRECT_URI = "http://www.prefstore.org/install_success"
+    #LOCAL! REALM = "http://localhost:80"
+    #LOCAL! WEB_PROXY = "http://mainproxy.nottingham.ac.uk:8080"
+            
     #-------------------------------
     # declare initialization in logs
     #-------------------------------        
@@ -1058,24 +1120,42 @@ if __name__ == '__main__' :
     print "BOTTLE_QUIET = %s" % BOTTLE_QUIET
     print "-"*40
     
-    #-------------------------------
-    # initialization
-    #-------------------------------
-    try:    
-        pm = ProcessingModule.ProcessingModule()
-    except Exception, e:
-        log.error( "Processing Module failure: %s" % ( e, ) )
-        exit()
-    
-    prefdb = PrefstoreDB.PrefstoreDB()
-    prefdb.connect()
-    prefdb.check_tables()
-    log.info( "database initialisation completed... [SUCCESS]" );
+    #---------------------------------
+    # Initialization
+    #---------------------------------
+    try:
+        datadb = DataDB()
+        datadb.connect()
+        datadb.check_tables()
+        prefdb = PrefDB()
+        prefdb.connect()
+        prefdb.check_tables()
+        log.info( "database initialization completed... [SUCCESS]" );
         
+    except Exception, e:
+        log.error( "database initialization error: %s" % ( e, ) )
+        exit()
+        
+    #---------------------------------
+    # module initialization
+    #---------------------------------
+    try:    
+        pm = ProcessingModule( datadb )
+        im = InstallationModule( RESOURCE_NAME, REDIRECT_URI, datadb )
+        log.info( "module initialization completed... [SUCCESS]" );
+    except Exception, e:
+        log.error( "module initialization error: %s" % ( e, ) )
+        
+    #---------------------------------
+    # Web Count Updater initialization
+    #---------------------------------
     updater = WebCountUpdater()
     updater.start()
     log.info( "web updater initialisation completed... [SUCCESS]" );
-                
+      
+    #---------------------------------
+    # Web Server initialization
+    #---------------------------------
     try:
         debug( True )
         run( host=HOST, port=PORT, quiet=BOTTLE_QUIET )
@@ -1083,4 +1163,11 @@ if __name__ == '__main__' :
         log.error( "Web Server Exception: %s" % ( e, ) )
         exit()
    
+    #---------------------------------
+    # Initialization Complete
+    #---------------------------------
+    print "Catalog Firing on all cylinders..."
+    print "-"*40
+
+    
    

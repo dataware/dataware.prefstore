@@ -9,7 +9,6 @@ import base64
 import random
 import __builtin__
 import sys
-import DatawareDB
 import MySQLdb
 import hashlib
 import logging
@@ -17,8 +16,7 @@ import logging
 #setup logger for this module
 log = logging.getLogger( "console_log" )
 
-#TODO: Still need a logout even when the person hasn't registered (maybe call it cancel?)
-#TODO: how to prevent accidental "google logins". Is this you?, etc.
+    
 #///////////////////////////////////////////////
 
 
@@ -39,26 +37,14 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
     
-    def __init__( self ):
-        self.db = DatawareDB.DatawareDB()
-        self.db.connect()
-        self.db.checkTables()
-        
+    def __init__( self, datadb ):
+        self.db = datadb;       
         self.sandbox_builtins = __builtin__.__dict__.copy()
         
         for command in __builtin__.__dict__ :
             if command not in self.ALLOWED_BUILTINS :
                 del self.sandbox_builtins[ command ]
         
-        
-    
-    #///////////////////////////////////////////////
-        
-        
-    def __del__(self):
-        if self.db.connected: 
-            self.db.close(); 
-       
          
     #///////////////////////////////////////////////
 
@@ -201,7 +187,7 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
         
-    def register_request( self, user_name, 
+    def permit_request( self, user_name, 
         client_id, shared_secret, resource_id, query, expiry_time ): 
         
         #check that the shared_secret is correct for this user_id
@@ -308,7 +294,7 @@ class ProcessingModule( object ) :
         
         token = base64.b64encode(  
             hashlib.sha256( 
-                str( random.getrandbits(256) ) 
+                str( random.getrandbits( 256 ) ) 
             ).digest() 
         )  
             

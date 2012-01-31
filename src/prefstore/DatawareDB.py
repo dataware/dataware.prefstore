@@ -341,7 +341,7 @@ class DataDB( object ):
             
             log.info( 
                 "%s %s: Initiating user '%s' installation to '%s' in database" 
-                % ( self.name, "insert_catalog", user_id, catalog_uri, ) 
+                % ( self.name, "insert_install", user_id, catalog_uri, ) 
             );
             
             
@@ -369,11 +369,76 @@ class DataDB( object ):
     
     
     @safety_mysql                    
+    def update_install( self, user_id, catalog_uri, access_token ):
+            
+        if ( user_id and catalog_uri and access_token ):
+            
+            query = """
+                  UPDATE %s.%s SET access_token=%s, registered=%s
+                  WHERE user_id=%s AND catalog_uri=%s
+              """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s', '%s', '%s' )
+           
+            update = self.cursor.execute( query, 
+                ( access_token, time.time(), user_id, catalog_uri, ) )
+
+            if update > 0 :
+                log.info( 
+                    "%s %s: Finalizing user '%s' installation to '%s' database" 
+                    % ( self.name, "update_install", user_id, catalog_uri, ) 
+                );
+                return True
+            else:
+                log.warning( 
+                    "%s: trying to update an unknown installation for user '%s'" 
+                    % (self.name, user_id ) 
+                )
+                return False                
+        else:
+            log.warning( 
+                "%s %s: Installation update requested with incomplete details" 
+                % (  self.name, "insert_catalog", ) 
+            );
+            
+            return False;   
+        
+
+    #///////////////////////////////////////
+    
+    
+    @safety_mysql                    
+    def delete_install( self, user_id, catalog_uri ):
+            
+        if ( user_id and catalog_uri  ):
+            
+            query = """
+                  DELETE FROM %s.%s 
+                  WHERE user_id=%s AND catalog_uri=%s
+              """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s' )
+           
+            self.cursor.execute( query, ( user_id, catalog_uri, ) )
+
+            log.info( 
+                "%s %s: Deleting user '%s' installation to '%s' database" 
+                % ( self.name, "delete_install", user_id, catalog_uri, ) 
+            );                
+        else:
+            log.warning( 
+                "%s %s: Installation delete requested with incomplete details" 
+                % (  self.name, "insert_catalog", ) 
+            );
+            
+            return False;   
+                
+        
+    #///////////////////////////////////////
+    
+    
+    @safety_mysql                    
     def fetch_install_by_state( self, state ):
             
         if state :
             query = """
-                SELECT * FROM %s.%s t where state = %s 
+                SELECT * FROM %s.%s WHERE state = %s 
             """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s' ) 
         
             self.cursor.execute( query, ( state, ) )

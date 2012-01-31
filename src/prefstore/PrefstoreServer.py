@@ -200,6 +200,48 @@ def install_request():
     except CatalogException, e:    
         return format_failure( "catalog", e.msg )
         
+         
+#///////////////////////////////////////////////
+
+
+@route( '/install_success', method = "GET" )
+def install_success():
+    
+    try:
+        user = check_login()
+    except RegisterException, e:
+        redirect( "/register" )
+    except LoginException, e:
+        return error( e.msg )
+    except Exception, e:
+        return error( e )  
+    
+    #TODO: we will either receive an error of a success
+    error = request.GET.get( "error", None )
+    
+    if ( error ):
+        im.fail_install( user )
+        #TODO: tell the user that the installation failed (a redirect?)
+        return "installation failed"
+
+    else:
+        state = request.GET.get( "state", None )
+        code = request.GET.get( "code", None )    
+        
+        #complete the install, swapping the authorization code
+        #we've received from the catalog, for the access_token
+        try:
+            im.complete_install( user, state, code )
+            
+        except ParameterException, e:
+            #TODO: make this more explanatory
+            return "installation failed due to a parameter error"
+        except Exception, e:
+            return error( e.msg )
+        
+        #TODO: tell the user that the installation succeeded (a redirect?)
+        return "installation success"
+
         
 #///////////////////////////////////////////////
    
@@ -1114,7 +1156,7 @@ if __name__ == '__main__' :
     #-------------------------------
     # constants
     #-------------------------------
-    EXTENSION_COOKIE = "logged_in"
+    EXTENSION_COOKIE = "prefstore_logged_in"
     PORT = 80
     REALM = "http://www.prefstore.org" 
     HOST = "0.0.0.0"  

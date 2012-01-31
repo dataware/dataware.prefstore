@@ -92,6 +92,77 @@ class InstallationModule( object ) :
     #///////////////////////////////////////////////
 
 
+    def complete_install( self, user, state, code ):
+        
+        if not ( state and code ):
+            raise ParameterException( 
+                "Catalog has not returned the correct parameters" )
+        
+        #check to see if we have actually made the install request
+        install = self.db.fetch_install_by_state( state ) 
+        
+        if not ( install ):
+            raise ParameterException( 
+                "Catalog has not returned a recognized state" )
+
+        access_token = self._make_token_request( 
+            install[ "catalog_uri"], code )
+         
+        state = self.db.update_install( 
+            install[ "user_id" ], 
+            install[ "catalog_uri" ], 
+            access_token ) 
+
+
+    #///////////////////////////////////////////////
+    
+        
+    def fail_install( self, user, state ):
+        
+        if not ( state ):
+            raise ParameterException( 
+                "Catalog has not returned the correct parameters" )
+    
+        #check to see if we have already made the install request
+        install = self.db.fetch_install_by_state( state ) 
+        
+        if not ( install ):
+            raise ParameterException( 
+                "Catalog has not returned a recognized state" )
+            
+        self.db.delete_install( install[ "user_id" ], install[ "catalog_uri"] )
+        
+             
+    #///////////////////////////////////////////////
+
+
+    def _make_token_request( self, catalog_uri, code ):
+   
+        #so now we need to swap the authorization code for 
+        #an access token by a GET request to the appropriate endpoint
+        try:
+            data = urllib.urlencode({
+                'grant_type': 'authorization_code',
+                'redirect_uri': self.redirect_uri,
+                'code': code, })
+            url = "%s/resource_access" % ( catalog_uri, )
+            req = urllib2.Request( url, data )
+            response = urllib2.urlopen( req )
+            access_token = response.read()
+            return access_token
+        
+        except urllib2.URLError:
+            raise CatalogException( "Could not contact the catalog to get access token" )
+        
+        
+         
+         
+   
+        
+    
+    #///////////////////////////////////////////////
+    
+        
     def _check_registration( self, catalog_uri ):
     
         #determine if we have already registered at this resource
@@ -139,7 +210,8 @@ class InstallationModule( object ) :
             opener = urllib2.build_opener( proxy )
             urllib2.install_opener( opener )
         
-        #first communicate with the resource provider   
+        #communicate with the catalog and obtain the
+        #resource_id that they assign us   
         try:
             data = urllib.urlencode({
                 'resource_name': self.resource_name,
@@ -147,7 +219,8 @@ class InstallationModule( object ) :
             url = "%s/resource_register" % ( catalog_uri, )
             req = urllib2.Request( url, data )
             response = urllib2.urlopen( req )
-            return response.read()
+            resource_id = response.read()
+            return resource_id
     
         except urllib2.URLError:
             raise CatalogException( "Could not contact supplied catalog" )

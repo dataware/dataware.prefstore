@@ -31,7 +31,6 @@
 				data = eval( '(' + data + ')' );
 				if ( data.success ) {
 					window.location = data.redirect;
-					error_box( "We are currently unable to process this installation. Please try again later." );
 				} else {
 					error_box( data.error );
 				}

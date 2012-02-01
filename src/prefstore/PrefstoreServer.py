@@ -12,6 +12,7 @@ from PrefstoreDB import *           #@UnusedWildImport
 import OpenIDManager
 import logging.handlers
 import validictory
+import time
 
 #TODO: Still need a logout even when the person hasn't registered 
 #(maybe call it cancel?)
@@ -204,8 +205,8 @@ def install_request():
 #///////////////////////////////////////////////
 
 
-@route( '/install_success', method = "GET" )
-def install_success():
+@route( '/install_complete', method = "GET" )
+def install_complete():
     
     try:
         user = check_login()
@@ -217,16 +218,16 @@ def install_success():
         return error( e )  
     
     error = request.GET.get( "error", None )
-    
+    state = request.GET.get( "state", None )
+    code = request.GET.get( "code", None )
+        
     if ( error ):
-        im.fail_install( user )
+        im.fail_install( user, state )
         #TODO: tell the user that the installation failed (a redirect?)
-        return "installation failed"
+        return "installation failed: %s" % \
+            ( request.GET.get( "error_description", "unspecified error" ) )
 
     else:
-        state = request.GET.get( "state", None )
-        code = request.GET.get( "code", None )    
-        
         #complete the install, swapping the authorization code
         #we've received from the catalog, for the access_token
         try:
@@ -1048,8 +1049,6 @@ def home( ):
         redirect( "/register" ) 
     except LoginException, e:
         return error( e.msg )
-    except Exception, e:
-        return error( e )  
   
     if ( not user ):
         summary = None
@@ -1167,7 +1166,7 @@ if __name__ == '__main__' :
     BOTTLE_QUIET = True 
     ROOT_PAGE = "/"
     RESOURCE_NAME = "Prefstore6"
-    REDIRECT_URI = "http://www.prefstore.org/install_success"
+    REDIRECT_URI = "http://www.prefstore.org/install_complete"
     #LOCAL! REALM = "http://localhost:80"
     #LOCAL! WEB_PROXY = "http://mainproxy.nottingham.ac.uk:8080"
             

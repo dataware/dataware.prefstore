@@ -382,8 +382,8 @@ class DataDB( object ):
                 ( access_token, time.time(), user_id, catalog_uri, ) )
 
             if update > 0 :
-                log.info( 
-                    "%s %s: Finalizing user '%s' installation to '%s' database" 
+                log.debug( 
+                    "%s %s: Updating installation for user '%s' to catalog '%s'" 
                     % ( self.name, "update_install", user_id, catalog_uri, ) 
                 );
                 return True

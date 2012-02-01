@@ -106,13 +106,15 @@ class InstallationModule( object ) :
                 "Catalog has not returned a recognized state" )
 
         access_token = self._make_token_request( 
-            install[ "catalog_uri"], code )
+            install[ "catalog_uri"], 
+            code )
          
         state = self.db.update_install( 
             install[ "user_id" ], 
             install[ "catalog_uri" ], 
             access_token ) 
-
+        
+        self.db.commit()
 
     #///////////////////////////////////////////////
     
@@ -138,26 +140,60 @@ class InstallationModule( object ) :
 
     def _make_token_request( self, catalog_uri, code ):
    
-        #so now we need to swap the authorization code for 
-        #an access token by a GET request to the appropriate endpoint
+        #so now we need to swap the authorization code for an access 
+        #token by a GET request to the appropriate endpoint. The endpoint
+        #returns a json response.
         try:
             data = urllib.urlencode({
                 'grant_type': 'authorization_code',
                 'redirect_uri': self.redirect_uri,
                 'code': code, })
-            url = "%s/resource_access" % ( catalog_uri, )
-            req = urllib2.Request( url, data )
+            url = "%s/resource_access?%s" % ( catalog_uri, data )
+            
+            req = urllib2.Request( url )
             response = urllib2.urlopen( req )
-            access_token = response.read()
+            output = response.read()
+            
+            access_token = self._parse_access_results( output )
             return access_token
         
         except urllib2.URLError:
             raise CatalogException( "Could not contact the catalog to get access token" )
         
         
-         
-         
-   
+    #///////////////////////////////////////////////
+            
+    
+    def _parse_access_results( self, output ):
+           
+        #parse the json response from the provider
+        try:
+            output = json.loads( output.replace( '\r\n','\n' ), strict=False )
+        except:
+            raise CatalogException( "Invalid json returned by catalog" )
+    
+        #determine whether the registration has been successful
+        try:
+            success = output[ "success" ]
+        except:
+            raise CatalogException( "Catalog has not returned successfully" )
+    
+        #if it has then extract the access_token that will be used
+        if not success:
+            try:
+                error = "%s: %s" % ( 
+                    output[ "error" ], 
+                    output[ "error_description" ], )
+            except:
+                error = "Unknown problems at catalog accepting request"
+                
+            raise CatalogException( error );
+        
+        #attempt to extract the resource_id
+        try:
+            return output[ "access_token" ]
+        except:
+            raise CatalogException( "Catalog failed to return an access_token" ) 
         
     
     #///////////////////////////////////////////////
@@ -224,8 +260,8 @@ class InstallationModule( object ) :
     
         except urllib2.URLError:
             raise CatalogException( "Could not contact supplied catalog" )
+       
         
-  
     #///////////////////////////////////////////////
     
             

@@ -12,9 +12,9 @@ from PrefstoreDB import *           #@UnusedWildImport
 import OpenIDManager
 import logging.handlers
 import validictory
-import time
 
-#TODO: Still need a logout even when the person hasn't registered (maybe call it cancel?)
+#TODO: Still need a logout even when the person hasn't registered 
+#(maybe call it cancel?)
 #TODO: how to prevent accidental "google logins". Is this you?, etc.
 
 #//////////////////////////////////////////////////////////
@@ -216,7 +216,6 @@ def install_success():
     except Exception, e:
         return error( e )  
     
-    #TODO: we will either receive an error of a success
     error = request.GET.get( "error", None )
     
     if ( error ):
@@ -235,9 +234,14 @@ def install_success():
             
         except ParameterException, e:
             #TODO: make this more explanatory
-            return "installation failed due to a parameter error"
+            return e.msg
+        
+        except CatalogException, e:
+            #TODO: make this more explanatory
+            return e.msg
+        
         except Exception, e:
-            return error( e.msg )
+            return error( e )
         
         #TODO: tell the user that the installation succeeded (a redirect?)
         return "installation success"

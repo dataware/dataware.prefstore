@@ -1165,7 +1165,7 @@ if __name__ == '__main__' :
     HOST = "0.0.0.0"  
     BOTTLE_QUIET = True 
     ROOT_PAGE = "/"
-    RESOURCE_NAME = "Prefstore6"
+    RESOURCE_NAME = "http://www.mydataware.info/prefstore"
     REDIRECT_URI = "http://www.prefstore.org/install_complete"
     #LOCAL! REALM = "http://localhost:80"
     #LOCAL! WEB_PROXY = "http://mainproxy.nottingham.ac.uk:8080"

@@ -104,7 +104,7 @@ class InstallationModule( object ) :
         if not ( install ):
             raise ParameterException( 
                 "Catalog has not returned a recognized state" )
-
+        
         access_token = self._make_token_request( 
             install[ "catalog_uri"], 
             code )
@@ -155,6 +155,7 @@ class InstallationModule( object ) :
             output = response.read()
             
             access_token = self._parse_access_results( output )
+
             return access_token
         
         except urllib2.URLError:

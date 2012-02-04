@@ -793,7 +793,7 @@ class PrefDB( object ):
         
         query = """
             UPDATE %s.%s SET query=%s WHERE access_token=4444
-        """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s' ) 
+        """  % ( self.DB_NAME, self.TBL_DATAWARE_PROCESSORS, '%s' ) 
         self.cursor.execute( query, code )
         self.commit()
         

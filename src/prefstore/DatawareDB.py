@@ -42,7 +42,7 @@ class DataDB( object ):
     ''' classdocs '''
     
     DB_NAME = 'prefstore'
-    TBL_DATAWARE_QUERIES = 'tblDatawareQueries'
+    TBL_DATAWARE_PROCESSORS = 'tblDatawareProcessors'
     TBL_DATAWARE_CATALOGS = 'tblDatawareCatalogs'
     TBL_DATAWARE_INSTALLS = 'tblDatawareInstalls'
     CONFIG_FILE = "prefstore.cfg"
@@ -53,7 +53,7 @@ class DataDB( object ):
   
     createQueries = { 
                
-        TBL_DATAWARE_QUERIES : """
+        TBL_DATAWARE_PROCESSORS : """
             CREATE TABLE %s.%s (
                 access_token varchar(256) NOT NULL,
                 client_id varchar(256) NOT NULL,
@@ -64,7 +64,7 @@ class DataDB( object ):
                 PRIMARY KEY (access_token) USING BTREE,
                 UNIQUE KEY UNIQUE (client_id,user_id,checksum)
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_DATAWARE_QUERIES ),
+        """  % ( DB_NAME, TBL_DATAWARE_PROCESSORS ),
        
         TBL_DATAWARE_CATALOGS : """ 
             CREATE TABLE %s.%s (
@@ -79,7 +79,7 @@ class DataDB( object ):
             CREATE TABLE %s.%s (
                 user_id varchar(256) NOT NULL,
                 catalog_uri varchar(256) NOT NULL,                
-                access_token varchar(256),
+                install_token varchar(256),
                 state varchar(256) NOT NULL,
                 registered int(10) unsigned DEFAULT NULL,
                 PRIMARY KEY (user_id),
@@ -219,14 +219,14 @@ class DataDB( object ):
 
 
     @safety_mysql   
-    def insert_request( self, access_token, client_id, user_name, expiry_time, query_code ):
+    def insert_processor( self, access_token, client_id, user_name, expiry_time, query_code ):
        
         #create a SHA checksum for the file
         checksum = hashlib.sha1( query_code ).hexdigest()
         
         query = """
              INSERT INTO %s.%s VALUES ( %s, %s, %s, %s, %s, %s )
-        """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s', '%s', '%s', '%s', '%s', '%s' ) 
+        """  % ( self.DB_NAME, self.TBL_DATAWARE_PROCESSORS, '%s', '%s', '%s', '%s', '%s', '%s' ) 
         
         self.cursor.execute( 
             query, ( 
@@ -246,13 +246,13 @@ class DataDB( object ):
     
     
     @safety_mysql       
-    def delete_request( self, access_token, user_name ):
+    def delete_processor( self, access_token ):
 
         query = """
-             DELETE FROM %s.%s WHERE access_token = %s AND user_name = %s 
-        """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s', '%s' ) 
+             DELETE FROM %s.%s WHERE user_id = %s AND access_token = %s
+        """  % ( self.DB_NAME, self.TBL_DATAWARE_PROCESSORS, '%s', '%s' ) 
 
-        self.cursor.execute( query, ( access_token, user_name ) )
+        self.cursor.execute( query, (  access_token, ) )
         self.commit()
                 
         #how many rows have been affected?
@@ -267,11 +267,11 @@ class DataDB( object ):
     
     
     @safety_mysql       
-    def fetch_request( self, access_token ):
+    def fetch_processor( self, access_token ):
         
         query = """
             SELECT * FROM %s.%s WHERE access_token = %s
-        """  % ( self.DB_NAME, self.TBL_DATAWARE_QUERIES, '%s' ) 
+        """  % ( self.DB_NAME, self.TBL_DATAWARE_PROCESSORS, '%s' ) 
         self.cursor.execute( query, access_token )
         row = self.cursor.fetchone()
         return row
@@ -347,7 +347,7 @@ class DataDB( object ):
             
             query = """
                   INSERT INTO %s.%s 
-                  ( user_id, catalog_uri, access_token, state, registered ) 
+                  ( user_id, catalog_uri, install_token, state, registered ) 
                   VALUES ( %s, %s, null, %s, %s )
               """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s', '%s', '%s' )
             
@@ -369,17 +369,17 @@ class DataDB( object ):
     
     
     @safety_mysql                    
-    def update_install( self, user_id, catalog_uri, access_token ):
+    def update_install( self, user_id, catalog_uri, install_token ):
             
-        if ( user_id and catalog_uri and access_token ):
+        if ( user_id and catalog_uri and install_token ):
             
             query = """
-                  UPDATE %s.%s SET access_token=%s, registered=%s
+                  UPDATE %s.%s SET install_token=%s, registered=%s
                   WHERE user_id=%s AND catalog_uri=%s
               """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s', '%s', '%s' )
            
             update = self.cursor.execute( query, 
-                ( access_token, time.time(), user_id, catalog_uri, ) )
+                ( install_token, time.time(), user_id, catalog_uri, ) )
 
             if update > 0 :
                 log.debug( 
@@ -478,22 +478,18 @@ class DataDB( object ):
     
     
     @safety_mysql       
-    def authenticate( self, user_name, access_token ) :
-        
-        if user_name and access_token:
+    def authenticate( self, install_token ) :
+                    
+        if install_token:
             query = """
-                SELECT 1 FROM %s.%s WHERE user_name = %s AND access_token = %s  
-            """  % ( self.DB_NAME, self.TBL_DATAWARE_CATALOGS, '%s', '%s' ) 
+                SELECT * FROM %s.%s WHERE install_token = %s  
+            """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s' ) 
 
-            self.cursor.execute( query, ( user_name, access_token ) )
-            row = self.cursor.fetchone()
+            self.cursor.execute( query, ( install_token, ) )
+            return self.cursor.fetchone()
             
-            if ( row is None ):
-                return False
-            else:    
-                return True
         else:    
-            return False
+            return None
 
 
     #///////////////////////////////////////////////

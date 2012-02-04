@@ -9,10 +9,11 @@ from ProcessingModule import *      #@UnusedWildImport
 from InstallationModule import *    #@UnusedWildImport
 from DatawareDB import *            #@UnusedWildImport
 from PrefstoreDB import *           #@UnusedWildImport
+import time                         #@Reimport
 import OpenIDManager
 import logging.handlers
 import validictory
-import time
+
 
 #TODO: Still need a logout even when the person hasn't registered 
 #(maybe call it cancel?)
@@ -160,7 +161,7 @@ def format_failure( cause, error, ):
  
 @route( '/install', method = "GET", )
 def install():
-    
+
     try:
         user = check_login()
         if ( not user ): redirect( ROOT_PAGE )
@@ -171,7 +172,7 @@ def install():
     except Exception, e:
         return error( e )        
         
-    return template( 'install_page_template', user=user) 
+    return template( 'install_page_template', user=user ) 
     
 
 #///////////////////////////////////////////////
@@ -192,7 +193,6 @@ def install_request():
 
     catalog_uri = request.GET.get( "catalog_uri", None )
     
-    # first check that the resource is registered with the catalog 
     try:
         url = im.initiate_install( user[ "user_id" ], catalog_uri  )
         return format_success( url )
@@ -222,10 +222,14 @@ def install_complete():
     code = request.GET.get( "code", None )
         
     if ( error ):
-        im.fail_install( user, state )
-        #TODO: tell the user that the installation failed (a redirect?)
-        return "installation failed: %s" % \
-            ( request.GET.get( "error_description", "unspecified error" ) )
+        try:
+            im.fail_install( user, state )
+            #TODO: tell the user that the installation failed (a redirect?)
+            return "installation failed: %s" % \
+                ( request.GET.get( "error_description", "unspecified error" ) )
+                
+        except ParameterException, e:
+            return e.msg
 
     else:
         #complete the install, swapping the authorization code
@@ -248,16 +252,19 @@ def install_complete():
         return "installation success"
 
         
-#///////////////////////////////////////////////
+    
+#//////////////////////////////////////////////////////////
+# 3RD PARTY PROCESSOR SPECIFIC WEB-API CALLS
+#//////////////////////////////////////////////////////////
    
     
-@route( '/invoke_request', method = "POST")
-def invoke_request():
+@route( '/invoke_processor', method = "POST")
+def invoke_processor():
     
     try:
         access_token = request.forms.get( 'access_token' )
         jsonParams = request.forms.get( 'parameters' )
-        result = pm.invoke_request( 
+        result = pm.invoke_processor( 
             access_token, 
             jsonParams )
         return result
@@ -268,21 +275,21 @@ def invoke_request():
 #///////////////////////////////////////////////
  
  
-@route( '/user/:user_name/permit_request', method = "POST" )
-def permit_request( user_name = None ):
+@route( 'permit_processor', method = "POST" )
+def permit_processor():
 
+    #we receive a resource_token and resource_id that matches us,
+    #proving that the message is from the catalog, along with 
+    #details of the query the client is proposing...
     try:
-        shared_secret = request.forms.get( 'access_token' )
+        install_token = request.forms.get( 'install_token' )
         client_id = request.forms.get( 'client_id' )
-        resource_id = request.forms.get( 'resource_id' )
         query = request.forms.get( 'query' ).replace( '\r\n','\n' )
         expiry_time = request.forms.get( 'expiry_time' )        
-                
-        result = pm.permit_request( 
-            user_name, 
+
+        result = pm.permit_processor( 
+            install_token,
             client_id,
-            shared_secret, 
-            resource_id,
             query,
             expiry_time 
         )
@@ -297,17 +304,16 @@ def permit_request( user_name = None ):
 #///////////////////////////////////////////////
  
  
-@route( '/user/:user_name/deregister_request', method = "POST" )
-def deregister_request( user_name = None ):
+@route( 'revoke_processor', method = "POST" )
+def revoke_processor( user_name = None ):
     
     try:
+        install_token = request.forms.get( 'install_token' )
         access_token = request.forms.get( 'access_token' )
-        shared_secret = request.forms.get( 'shared_secret' )
-        
-        result = pm.deregister_request( 
-            user_name,
-            shared_secret,
-            access_token, 
+
+        result = pm.revoke_processor( 
+            install_token=install_token,
+            access_token=access_token,
         )
         
         return result
@@ -1166,7 +1172,7 @@ if __name__ == '__main__' :
     BOTTLE_QUIET = True 
     ROOT_PAGE = "/"
     RESOURCE_NAME = "http://www.mydataware.info/prefstore"
-    REDIRECT_URI = "http://www.prefstore.org/install_complete"
+    RESOURCE_URI = "http://www.prefstore.org"
     #LOCAL! REALM = "http://localhost:80"
     #LOCAL! WEB_PROXY = "http://mainproxy.nottingham.ac.uk:8080"
             
@@ -1202,7 +1208,7 @@ if __name__ == '__main__' :
     #---------------------------------
     try:    
         pm = ProcessingModule( datadb )
-        im = InstallationModule( RESOURCE_NAME, REDIRECT_URI, datadb )
+        im = InstallationModule( RESOURCE_NAME, RESOURCE_URI, datadb )
         log.info( "module initialization completed... [SUCCESS]" );
     except Exception, e:
         log.error( "module initialization error: %s" % ( e, ) )

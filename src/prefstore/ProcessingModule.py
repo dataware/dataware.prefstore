@@ -104,9 +104,9 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
     
-    def invoke_request( self, access_token, jsonParams ):
+    def invoke_processor( self, processor_token, jsonParams ):
         
-        if access_token is None :
+        if processor_token is None :
             return self.format_process_failure(
                 "access_exception",
                 "Access token has not been supplied"
@@ -121,7 +121,7 @@ class ProcessingModule( object ) :
             ) 
     
         try:
-            request = self.db.fetch_request( access_token )
+            request = self.db.fetch_processor( processor_token )
             if request is None:
                 return self.format_process_failure(
                     "access_exception",
@@ -187,36 +187,37 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
         
-    def permit_request( self, user_name, 
-        client_id, shared_secret, resource_id, query, expiry_time ): 
+    def permit_processor( self, install_token, client_id, query, expiry_time ): 
         
         #check that the shared_secret is correct for this user_id
         try:
-            if ( not self.db.authenticate( user_name, shared_secret ) ) :
+            install = self.db.authenticate( install_token )
+
+            if ( not install ) or install[ "user_id" ] == None:
                 return self.format_register_failure(
-                    "registration_failure",
-                    "incorrect user_id or shared_secret"
+                    "permit_failure",
+                    "no user found corresponding to that install_token"
                 ) 
         except:    
             return self.format_register_failure(
-                "registration_failure",
+                "permit_failure",
                 "Database problems are currently being experienced"
             ) 
         
         #check that the client_id exists and is valid
         if not ( client_id ):
             return self.format_register_failure(
-                "registration_failure",
+                "permit_failure",
                 "A valid client ID has not been provided"
             )  
         
         #check that the requested query is syntactically correct
         try:
             compile( query, '', 'exec' )
-        except:
+        except Exception, e:
             return self.format_register_failure(
-                "registration_failure",
-                "Compilation error"
+                "permit_failure",
+                "Compilation error: %s" % str( e )
             ) 
             
         #TODO: check that the expiry time is valid
@@ -228,28 +229,26 @@ class ProcessingModule( object ) :
         #so far so good. Time to generate an access token
         access_token = self.generateAccessToken();
         try:
-            self.db.insert_request( 
+            self.db.insert_processor( 
                 access_token, 
                 client_id, 
-                user_name, 
+                install[ "user_id" ],
                 expiry_time, 
                 query 
             )
                        
-            return self.format_register_success(
-                { "access_token" : access_token } 
-            ) 
+            return self.format_register_success( access_token ) 
         
-        #if the user access_token already exists an Integrity Error will be thrown
+        #if the token already exists an Integrity Error will be thrown
         except MySQLdb.IntegrityError:
             return self.format_register_failure(
-                "registration_failure",
+                "permit_failure",
                 "An identical request already exists"
             ) 
               
         except:    
             return self.format_register_failure(
-                "registration_failure",
+                "permit_failure",
                 "Database problems are currently being experienced"
             ) 
             
@@ -257,32 +256,34 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
     
     
-    def deregister_request( self, user_name, shared_secret, access_token ):
+    def revoke_processor( self, install_token, access_token ):
  
         #check that the shared_secret is correct for this user_id
         try:
             if not access_token :
                 return self.format_register_failure(
-                    "deregister_failure",
-                    "Identifying access token not supplied"
+                    "revoke_failure",
+                    "A processor_token has not been supplied"
                 ) 
                 
-            if not self.db.authenticate( user_name, shared_secret ) :
+            install = self.db.authenticate( install_token )
+
+            if ( not install ) or install[ "user_id" ] == None:
                 return self.format_register_failure(
-                    "deregister_failure",
-                    "Incorrect user_name or shared_secret"
+                    "revoke_failure",
+                    "no user found corresponding to that install_token"
                 ) 
     
-            if self.db.delete_request( access_token, user_name ) :
+            if self.db.delete_processor( access_token ) :
                 return self.format_register_success() 
             else :
                 return self.format_register_failure(
-                    "deregister_failure",
-                    "Request with that access token could not found"
+                    "revoke_failure",
+                    "Request with that request_token could not found"
                 ) 
         except:    
             return self.format_register_failure(
-                "deregister_failure",
+                "revoke_failure",
                 "Database problems are currently being experienced"
             ) 
             

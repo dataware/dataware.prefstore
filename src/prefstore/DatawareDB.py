@@ -479,11 +479,11 @@ class DataDB( object ):
     
     @safety_mysql       
     def authenticate( self, install_token ) :
-                    
+        
         if install_token:
             query = """
                 SELECT * FROM %s.%s WHERE install_token = %s  
-            """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s', '%s' ) 
+            """  % ( self.DB_NAME, self.TBL_DATAWARE_INSTALLS, '%s' ) 
 
             self.cursor.execute( query, ( install_token, ) )
             return self.cursor.fetchone()

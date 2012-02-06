@@ -62,7 +62,7 @@ class DataDB( object ):
                 query text NOT NULL,
                 checksum varchar(256) NOT NULL,
                 PRIMARY KEY (access_token) USING BTREE,
-                UNIQUE KEY UNIQUE (client_id,user_id,checksum)
+                UNIQUE KEY (client_id,user_id,checksum)
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """  % ( DB_NAME, TBL_DATAWARE_PROCESSORS ),
        

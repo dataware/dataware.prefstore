@@ -163,6 +163,7 @@ class PrefDB( object ):
     
     
     def reconnect( self ):
+        
         log.debug( "%s: Database reconnection process activated..." % self.name );
         self.close()
         self.connect()
@@ -231,6 +232,7 @@ class PrefDB( object ):
     
     @safety_mysql
     def create_table( self, tableName ):
+        
         log.warning( 
             "%s: missing system table detected: '%s'" 
             % ( self.name, tableName ) 
@@ -444,10 +446,12 @@ class PrefDB( object ):
 
     @safety_mysql                
     def getMissingCounts( self ):
+        
         query = """
             SELECT term FROM %s.%s where count IS NULL 
         """  % ( self.DB_NAME, self.TBL_TERM_DICTIONARY ) 
         self.cursor.execute( query  )
+        
         resultSet = [ row[ 'term' ] for row in self.cursor.fetchall() ]
         return resultSet
     
@@ -749,7 +753,8 @@ class PrefDB( object ):
        
        
     @safety_mysql                       
-    def blacklistTerm( self, term ):           
+    def blacklistTerm( self, term ):   
+                
         log.info( "Blacklisting term '%s' " % ( term ) );
         self.deleteDictionaryTerm( term )
         
@@ -785,7 +790,8 @@ class PrefDB( object ):
 
     @safety_mysql   
     def update_tfidf( self ):
-        """This is currently just a debugging test function
+        """
+            This is currently just a debugging test function
         """
         
         f = open( 'doc_similarity.py', 'r' )

@@ -14,7 +14,6 @@ log = logging.getLogger( "console_log" )
 
 
 class WebSearch( object ):
-    ''' classdocs '''
     
     _PROXY = None 
     _GOOGLE_KEY = None 

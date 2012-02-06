@@ -15,10 +15,6 @@ import logging.handlers
 import validictory
 
 
-#TODO: Still need a logout even when the person hasn't registered 
-#(maybe call it cancel?)
-#TODO: how to prevent accidental "google logins". Is this you?, etc.
-
 #//////////////////////////////////////////////////////////
 # SETUP LOGGING FOR THIS MODULE
 #//////////////////////////////////////////////////////////
@@ -407,6 +403,7 @@ def authenticate():
 
 @route('/logout')
 def logout():
+    
     delete_authentication_cookie()
     redirect( ROOT_PAGE )
     
@@ -415,6 +412,7 @@ def logout():
  
          
 def delete_authentication_cookie():
+    
     response.set_cookie( 
         key=EXTENSION_COOKIE,
         value='',
@@ -446,6 +444,7 @@ def set_authentication_cookie( user_id, user_name = None ):
 
 
 class LoginException ( Exception ):
+    
     def __init__(self, msg):
         self.msg = msg
 
@@ -455,6 +454,7 @@ class LoginException ( Exception ):
 
 class RegisterException ( Exception ):
     """Base class for RegisterException in this module."""
+    
     pass
 
     
@@ -462,6 +462,7 @@ class RegisterException ( Exception ):
 
 
 def valid_email( str ):
+    
     return re.search( "^[A-Za-z0-9%._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$", str )
 
 
@@ -552,6 +553,7 @@ def user_register():
 
 
 def error( e ):
+    
     return  "An error has occurred: %s" % ( e )
 
       
@@ -815,6 +817,7 @@ def process_distill( user, data ) :
 
 @route('/static/:filename')
 def get_static_file( filename ):
+    
     return static_file( filename, root='static/' )
 
 
@@ -1107,7 +1110,7 @@ def summary():
     
 @route('/audit')
 def audit():
-    
+
     try:
         user = check_login()
         return template( 'audit_page_template', user=user );

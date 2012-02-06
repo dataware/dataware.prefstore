@@ -49,7 +49,7 @@ class ProcessingModule( object ) :
     #///////////////////////////////////////////////
 
 
-    def format_register_success( self, access_token ):
+    def format_register_success( self, access_token = None ):
         
         if ( access_token ) :
             json_response = { 'success': True, 'access_token': access_token }
@@ -257,7 +257,7 @@ class ProcessingModule( object ) :
     
     
     def revoke_processor( self, install_token, access_token ):
- 
+        
         #check that the shared_secret is correct for this user_id
         try:
             if not access_token :
@@ -267,15 +267,16 @@ class ProcessingModule( object ) :
                 ) 
                 
             install = self.db.authenticate( install_token )
-
+        
             if ( not install ) or install[ "user_id" ] == None:
                 return self.format_register_failure(
                     "revoke_failure",
                     "no user found corresponding to that install_token"
                 ) 
-    
-            if self.db.delete_processor( access_token ) :
-                return self.format_register_success() 
+            
+            if self.db.delete_processor( install[ "user_id" ], access_token ) :
+                return self.format_register_success()
+                 
             else :
                 return self.format_register_failure(
                     "revoke_failure",

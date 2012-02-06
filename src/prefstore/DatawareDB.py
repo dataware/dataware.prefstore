@@ -246,13 +246,13 @@ class DataDB( object ):
     
     
     @safety_mysql       
-    def delete_processor( self, access_token ):
+    def delete_processor( self, user_id, access_token ):
 
         query = """
              DELETE FROM %s.%s WHERE user_id = %s AND access_token = %s
         """  % ( self.DB_NAME, self.TBL_DATAWARE_PROCESSORS, '%s', '%s' ) 
 
-        self.cursor.execute( query, (  access_token, ) )
+        self.cursor.execute( query, ( user_id, access_token, ) )
         self.commit()
                 
         #how many rows have been affected?

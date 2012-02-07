@@ -40,7 +40,6 @@ class PrefDB( object ):
     ''' classdocs '''
     
     DB_NAME = 'prefstore'
-    TBL_PERIODS = 'tblPeriods'
     TBL_TERM_APPEARANCES = 'tblTermAppearances'
     TBL_TERM_DICTIONARY = 'tblTermDictionary'
     TBL_TERM_BLACKLIST = 'tblTermBlacklist'

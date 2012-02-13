@@ -7,7 +7,7 @@
 <script type="text/javascript"> 
 	
 	//-- create a word list from the different data categories
-	var word_list = {{data}};
+	var word_list = {{!data}};
 	var selected_term_list = new Array();
 	
 	//-- when the page is ready draw the word cloud

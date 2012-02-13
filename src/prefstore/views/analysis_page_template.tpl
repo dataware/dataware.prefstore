@@ -28,7 +28,7 @@
 				{id:'E',label:'Web Importance', type:'number'},
 				{id:'F',label:'Relevance', type:'number'},
 				{id:'G',label:'Last Seen (GMT)', type:'number'}],
-			rows:[{{data}}]
+			rows:[{{!data}}]
 		};
 
 		//-- create an instance of the table data in memory

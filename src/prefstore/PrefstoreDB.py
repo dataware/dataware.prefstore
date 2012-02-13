@@ -54,9 +54,9 @@ class PrefDB( object ):
     #///////////////////////////////////////
 
  
-    createQueries = { 
+    createQueries = [
                
-        TBL_TERM_DICTIONARY : """
+        ( TBL_TERM_DICTIONARY, """
             CREATE TABLE %s.%s (
             term varchar(128) NOT NULL,
             term_id int(10) unsigned NOT NULL AUTO_INCREMENT,
@@ -65,31 +65,17 @@ class PrefDB( object ):
             ctime int(10) unsigned,
             PRIMARY KEY (term_id), UNIQUE KEY `UNIQUE` (`term`) )
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_TERM_DICTIONARY ),
+        """  % ( DB_NAME, TBL_TERM_DICTIONARY ) ),
         
-        TBL_TERM_BLACKLIST : """
+        ( TBL_TERM_BLACKLIST, """
             CREATE TABLE %s.%s (
             term varchar(128) NOT NULL,
             term_id int(10) unsigned NOT NULL AUTO_INCREMENT,
             PRIMARY KEY (term_id), UNIQUE KEY `UNIQUE` (`term`) )
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_TERM_BLACKLIST ),
+        """  % ( DB_NAME, TBL_TERM_BLACKLIST ) ),
         
-        TBL_TERM_APPEARANCES : """
-            CREATE TABLE %s.%s (
-            user_id varchar(256) NOT NULL,
-            term varchar(128) NOT NULL,
-            doc_appearances bigint(20) unsigned NOT NULL,
-            total_appearances bigint(20) unsigned NOT NULL,
-            last_seen int(10) unsigned NOT NULL,
-            PRIMARY KEY (user_id, term),
-            FOREIGN KEY (user_id) REFERENCES %s(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-            FOREIGN KEY (term) REFERENCES %s(term) ON DELETE CASCADE ON UPDATE CASCADE )
-            ENGINE=InnoDB DEFAULT CHARSET=latin1;
-            
-        """  % ( DB_NAME, TBL_TERM_APPEARANCES, TBL_USER_DETAILS, TBL_TERM_DICTIONARY ),
-      
-        TBL_USER_DETAILS : """
+        ( TBL_USER_DETAILS, """
             CREATE TABLE %s.%s (
             user_id varchar(256) NOT NULL,
             user_name varchar(64),
@@ -101,9 +87,23 @@ class PrefDB( object ):
             registered int(10) unsigned,        
             PRIMARY KEY (user_id), UNIQUE KEY `UNIQUE` (`user_name`) ) 
             ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_USER_DETAILS ),   
+        """  % ( DB_NAME, TBL_USER_DETAILS ) ),  
         
-        VIEW_TERM_SUMMARIES : """
+        ( TBL_TERM_APPEARANCES, """
+            CREATE TABLE %s.%s (
+            user_id varchar(256) NOT NULL,
+            term varchar(128) NOT NULL,
+            doc_appearances bigint(20) unsigned NOT NULL,
+            total_appearances bigint(20) unsigned NOT NULL,
+            last_seen int(10) unsigned NOT NULL,
+            PRIMARY KEY (user_id, term),
+            FOREIGN KEY (user_id) REFERENCES %s(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+            FOREIGN KEY (term) REFERENCES %s(term) ON DELETE CASCADE ON UPDATE CASCADE )
+            ENGINE=InnoDB DEFAULT CHARSET=latin1;
+            
+        """  % ( DB_NAME, TBL_TERM_APPEARANCES, TBL_USER_DETAILS, TBL_TERM_DICTIONARY ) ), 
+        
+        ( VIEW_TERM_SUMMARIES, """
             CREATE VIEW %s.%s AS
             SELECT
               user_id,
@@ -118,8 +118,8 @@ class PrefDB( object ):
               SUM( doc_appearances ) total_documents              
             FROM prefstore.tblTermAppearances
             GROUP BY user_id
-        """  % ( DB_NAME, VIEW_TERM_SUMMARIES ),          
-    } 
+        """  % ( DB_NAME, VIEW_TERM_SUMMARIES ) ),          
+    ] 
     
     
     #///////////////////////////////////////
@@ -186,7 +186,7 @@ class PrefDB( object ):
             self.conn.close();
                 
                        
-    #////////////////////////////////////////////////////////////////////////////////////////////
+    #/////////////////////////////////////////////////////////////////////////////////////////////
     
     
     @safety_mysql
@@ -215,13 +215,13 @@ class PrefDB( object ):
             WHERE table_schema='%s'
         """ % self.DB_NAME )
         
-        tables = [ row[ "table_name" ] for row in self.cursor.fetchall() ]
+        tables = [ row[ "table_name" ].lower() for row in self.cursor.fetchall() ]
  
         #if they don't exist for some reason, create them.    
-        for t, q in self.createQueries.iteritems():
-            if not t in tables : 
-                log.warning( "%s: Creating missing system table: '%s'" % ( self.name, t ) );
-                self.cursor.execute( q )
+        for item in self.createQueries:
+            if not item[ 0 ].lower() in tables : 
+                log.warning( "%s: Creating missing system table: '%s'" % ( self.name, item[ 0 ] ) );
+                self.cursor.execute( item[ 1 ] )
 
         self.commit();
         

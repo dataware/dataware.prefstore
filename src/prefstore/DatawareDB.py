@@ -51,9 +51,9 @@ class DataDB( object ):
     #///////////////////////////////////////
 
   
-    createQueries = { 
+    createQueries = [ 
                
-        TBL_DATAWARE_PROCESSORS : """
+        ( TBL_DATAWARE_PROCESSORS, """
             CREATE TABLE %s.%s (
                 access_token varchar(256) NOT NULL,
                 client_id varchar(256) NOT NULL,
@@ -64,18 +64,18 @@ class DataDB( object ):
                 PRIMARY KEY (access_token) USING BTREE,
                 UNIQUE KEY (client_id,user_id,checksum)
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_DATAWARE_PROCESSORS ),
+        """  % ( DB_NAME, TBL_DATAWARE_PROCESSORS ) ),
        
-        TBL_DATAWARE_CATALOGS : """ 
+        ( TBL_DATAWARE_CATALOGS, """ 
             CREATE TABLE %s.%s (
                 catalog_uri varchar(256) NOT NULL,                
                 resource_id varchar(256) NOT NULL,
                 registered int(10) unsigned DEFAULT NULL,
                 PRIMARY KEY (catalog_uri)
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_DATAWARE_CATALOGS ),  
+        """  % ( DB_NAME, TBL_DATAWARE_CATALOGS ) ),  
         
-        TBL_DATAWARE_INSTALLS : """ 
+        ( TBL_DATAWARE_INSTALLS, """ 
             CREATE TABLE %s.%s (
                 user_id varchar(256) NOT NULL,
                 catalog_uri varchar(256) NOT NULL,                
@@ -86,8 +86,8 @@ class DataDB( object ):
                 FOREIGN KEY (catalog_uri) REFERENCES %s(catalog_uri) 
                 ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-        """  % ( DB_NAME, TBL_DATAWARE_INSTALLS, TBL_DATAWARE_CATALOGS ),            
-    } 
+        """  % ( DB_NAME, TBL_DATAWARE_INSTALLS, TBL_DATAWARE_CATALOGS ) ),            
+    ] 
     
         
     #///////////////////////////////////////
@@ -182,13 +182,13 @@ class DataDB( object ):
             WHERE table_schema='%s'
         """ % self.DB_NAME )
         
-        tables = [ row[ "table_name" ] for row in self.cursor.fetchall() ]
+        tables = [ row[ "table_name" ].lower() for row in self.cursor.fetchall() ]
         
         #if they don't exist for some reason, create them.    
-        for t, q in self.createQueries.iteritems():
-            if not t in tables : 
-                log.warning( "%s: Creating missing system table: '%s'" % ( self.name, t ) );
-                self.cursor.execute( q )
+        for item in self.createQueries:
+            if not item[ 0 ].lower() in tables : 
+                log.warning( "%s: Creating missing system table: '%s'" % ( self.name, item[ 0 ] ) );
+                self.cursor.execute( item[ 1 ] )
         
         self.commit()
         

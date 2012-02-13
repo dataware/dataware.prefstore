@@ -11,8 +11,8 @@
 
 <script>
 
-	<!-- PREFSTORE = "http://localhost:80/" #LOCAL!-->
-	PREFSTORE = "http://www.prefstore.org/"
+	PREFSTORE = "http://localhost:80/" 
+	<!-- PREFSTORE = "http://www.prefstore.org/" #LOCAL!-->
 	 
 	$( document ).ready( function() {
 		$( 'div.menu_button' ).mouseover(function() {

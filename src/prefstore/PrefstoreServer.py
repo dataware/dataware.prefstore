@@ -397,7 +397,24 @@ def authenticate():
         
     return "<script>self.parent.location = '%s'</script>" % ( REALM + ROOT_PAGE,)
        
+       
+#///////////////////////////////////////////////
+
+
+@route( "/login_local", method = "GET" )
+def login_local():
+    
+    user_name = request.GET.get( "user_name", None )   
+    try:
+        user = prefdb.fetch_user_by_name( user_name )
+        set_authentication_cookie( user[ "user_id" ], user_name  )
                 
+    except Exception, e:
+        return error( e )
+        
+    return "<script>self.parent.location = '%s'</script>" % ( REALM + ROOT_PAGE,)
+       
+       
 #///////////////////////////////////////////////
 
 
@@ -1140,11 +1157,13 @@ if __name__ == '__main__' :
     data_log.setLevel( logging.DEBUG )    
 
     # create handlers
-    #LOCAL ch = logging.StreamHandler(sys.stdout)
-    ch = logging.handlers.TimedRotatingFileHandler( 
-        filename='logs/prefstore.log',
-        when='midnight', 
-        interval=21 )
+    #LOCAL
+    ch = logging.StreamHandler(sys.stdout)
+    
+    #ch = logging.handlers.TimedRotatingFileHandler( 
+    #    filename='logs/prefstore.log',
+    #    when='midnight', 
+    #    interval=21 )
     
     fh = logging.handlers.TimedRotatingFileHandler( 
         filename='logs/prefstore_data.log',
@@ -1170,14 +1189,15 @@ if __name__ == '__main__' :
     #-------------------------------
     EXTENSION_COOKIE = "prefstore_logged_in"
     PORT = 80
-    REALM = "http://www.prefstore.org" 
     HOST = "0.0.0.0"  
     BOTTLE_QUIET = True 
     ROOT_PAGE = "/"
     RESOURCE_NAME = "http://www.mydataware.info/prefstore"
     RESOURCE_URI = "http://www.prefstore.org"
-    #LOCAL! REALM = "http://localhost:80"
-    #LOCAL! WEB_PROXY = "http://mainproxy.nottingham.ac.uk:8080"
+    #REALM = "http://www.prefstore.org"
+    #LOCAL! 
+    REALM = "http://localhost:80"
+    WEB_PROXY = "http://mainproxy.nottingham.ac.uk:8080"
             
     #-------------------------------
     # declare initialization in logs

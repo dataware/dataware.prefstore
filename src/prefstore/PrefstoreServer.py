@@ -9,11 +9,12 @@ from ProcessingModule import *      #@UnusedWildImport
 from InstallationModule import *    #@UnusedWildImport
 from DatawareDB import *            #@UnusedWildImport
 from PrefstoreDB import *           #@UnusedWildImport
+from NewsDB import *           #@UnusedWildImport
 import time                         #@Reimport
 import OpenIDManager
 import logging.handlers
 import validictory
-
+import math
 
 #//////////////////////////////////////////////////////////
 # SETUP LOGGING FOR THIS MODULE
@@ -43,6 +44,168 @@ TOTAL_WEB_DOCUMENTS = 25000000000
 #//////////////////////////////////////////////////////////
 # DEMO FUNCTIONS
 #//////////////////////////////////////////////////////////
+
+
+@route('/compare')
+def compare() :
+
+    try:
+        user = check_login()
+    except RegisterException, e:
+        redirect( "/register" )
+    except LoginException, e:
+        return error( e.msg )
+    except Exception, e:
+        return error( e ) 
+    
+    #if the user doesn't exist or is not logged in,
+    #then send them home. naughty user.
+    if ( not user ) : redirect( ROOT_PAGE )
+    
+    terms = {}
+    for k,v in request.GET.items():
+        terms[ k.lower() ] = float( v )
+
+    _run_compare( user[ "user_id" ], terms )
+    
+
+#///////////////////////////////////////////////
+
+#TODO - a single term will give a value of 1!? Why?
+def _run_compare( user_id, terms ) :
+
+    parameters = { "input_doc" : terms  } 
+    MAX_TERMS_IN_DOC = 90
+    MIN_FREQ = 0
+    MAX_FREQ = 1
+    DEFAULT_IDF = 7
+
+    input_doc = parameters[ 'input_doc' ]
+    
+    #-----------------------------------------------
+    # INVARIANCE CHECKS
+    #-----------------------------------------------
+    #check that the input is a dictionary of terms and frequencies
+    if not type( input_doc ).__name__ == 'dict':
+        raise Exception( 'Invariance Check failed - input_doc is not a dictionary' )
+    
+    #check that the maximum no. terms isn't exceeded (100)
+    if len( input_doc ) > MAX_TERMS_IN_DOC :
+        raise Exception( 'Invariance Check failed - Document exceeds maximum terms limit' )
+    
+    #check that the term frequencies are within bounds
+    #n.b. the limits of this are zero and one, but these can be changed
+    #to allow a user greater privacy (i.e. max < 0.25 say)
+    for v in input_doc.values():
+        if v < MIN_FREQ or v > MAX_FREQ :
+            raise Exception( 'Invariance Check failed - Term frequencies out of permitted bounds' ) 
+    
+    #check that the term frequencies do not sum to greater than one   
+    if sum( [ i for i in input_doc.values() ] ) > 1.05 :
+        raise Exception( 'Invariance Check failed - Term frequencies sum to a value greater than one' ) 
+    
+    #check that the number of terms doesn't exceed the maximum allowed.
+    #n.b. this has impact on the efficiency of the IN clause in the SQL query.
+    #Some databases (e.g. PostgreSQL) are purported to hard limit at 1000 terms.
+    if len( input_doc ) > MAX_TERMS_IN_DOC :
+        raise Exception( 'Invariance Check failed - Document exceeds maximum terms limit')
+
+
+    #-----------------------------------------------
+    # INITIALIZATION
+    #-----------------------------------------------
+
+    #setup some format strings required for use in SQL IN clauses
+    format_strings = ',' . join( [ '%s' ] * len( input_doc ) )
+    terms = list( input_doc.keys() )
+    
+    #We will need to know the total words in the users preference document
+    query = """SELECT SUM( total_appearances ) total  
+        FROM prefstore.tblTermAppearances
+        WHERE user_id = %s  
+    """
+    prefdb.cursor.execute( query ,( user_id ) )
+    row = prefdb.cursor.fetchone()
+    user_doc_total_terms = row.get( 'total' )
+
+    #check that the user actually has data to compare against
+    if user_doc_total_terms == None :
+        raise Exception( 'User has no preference records' )
+        
+    #-----------------------------------------------
+    # INPUT DOCUMENT CALCULATIONS
+    #-----------------------------------------------
+    
+    #first we need to find the idf scores for all of the input terms.
+    #if we don't have information for these, we assume a default idf.
+    idfs = dict( ( k, DEFAULT_IDF ) for k, v in input_doc.items() )
+    
+    #retrieve the true idf scores for the terms we do know  
+    query = '''SELECT term, log( %s / count ) idf
+        FROM prefstore.tblTermDictionary 
+        WHERE term IN ( %s )
+        AND count IS NOT NULL
+    '''  % ( TOTAL_WEB_DOCUMENTS, format_strings )
+    prefdb.cursor.execute( query, tuple( terms ) )
+    result = prefdb.cursor.fetchall()
+    
+    #overwrite the default idfs for real ones we know
+    for r in result: 
+        idfs[ r.get( 'term' ) ] = r.get( 'idf' )
+        
+
+    #calculate the weight vector for the input doc
+    input_doc_weights = dict( ( k, v * idfs[ k ] ) for k, v in input_doc.items() )
+   
+    #calculate the length (norm) of the input document vector
+    input_doc_norm = math.sqrt( sum( [ (w * w) for w in input_doc_weights.values() ] ) )
+
+    #-----------------------------------------------
+    # USER DOCUMENT CALCULATIONS
+    #-----------------------------------------------
+
+    #get the term appearances from the user doc relevent to the query
+    query = '''
+        SELECT term, total_appearances / %s tf 
+        FROM prefstore.tblTermAppearances  
+        WHERE term IN ( %s ) AND user_id = %s
+    ''' % ( '%s', format_strings, '%s' )
+
+    params = tuple([ user_doc_total_terms ] + terms + [ user_id ] )
+    prefdb.cursor.execute( query, params )
+    result = prefdb.cursor.fetchall()
+        
+    #and from their totalAppeances, work out a weight for each
+    user_doc_weights = dict( 
+        ( r.get( 'term' ), r.get( 'tf' ) * idfs[ r.get( 'term' ) ] ) 
+        for r in result 
+    )
+    
+    #calculate the length (norm) of the input document vector
+    user_doc_norm = math.sqrt( sum( [ (w * w) for w in user_doc_weights.values() ] ) )
+    
+    #-----------------------------------------------
+    # FINAL SIMILARITY CALCULATIONS
+    #-----------------------------------------------
+
+    sum_of_weights = sum( [ 
+        weight * input_doc_weights[ term ] 
+        for term, weight in user_doc_weights.items() 
+    ] )
+    
+    try:
+        cosine_similarity =  sum_of_weights  / ( input_doc_norm * user_doc_norm )
+    except ZeroDivisionError:
+        cosine_similarity = 0
+
+    #-----------------------------------------------
+    # OUTPUT THE RESULT
+    #-----------------------------------------------
+    return str(cosine_similarity) 
+
+
+#///////////////////////////////////////////////
+
 
 @route('/images')
 def get_images():
@@ -1122,12 +1285,14 @@ def summary():
 #///////////////////////////////////////////////  
     
     
-@route('/audit')
-def audit():
+@route('/news')
+def news():
+
+
+    limit = int( request.GET.get( "limit", 385 ) )
 
     try:
         user = check_login()
-        return template( 'audit_page_template', user=user );
     except RegisterException, e:
         redirect( "/register" ) 
     except LoginException, e:
@@ -1137,7 +1302,25 @@ def audit():
     
     #if the user doesn't exist or is not logged in,
     #then send them home. naughty user.
-    if ( not user ) : redirect( ROOT_PAGE ) 
+    if ( not user ) : redirect( ROOT_PAGE )
+
+    summary = newsdb.items_user_summary( user[ "user_id" ] );
+    
+    stories = newsdb.items_user_fetch(
+        user[ "user_id" ],
+        limit
+    )
+    
+    sorted_stories = [ i for i in stories ]
+    for i in range( limit ): sorted_stories[ i ][ "id" ] = i
+    sorted_stories.sort( key=lambda k:k["score"], reverse = True )
+    score_positions = [ i.get( "id" ) for i in sorted_stories ]
+    
+    return template( 'audit_page_template', 
+        user=user, 
+        score_positions = score_positions,
+        stories = stories,
+        summary = summary ); 
     
             
 #//////////////////////////////////////////////////////////
@@ -1219,10 +1402,15 @@ if __name__ == '__main__' :
         prefdb.check_tables()
         log.info( "database initialization completed... [SUCCESS]" );
         
+        newsdb = NewsDB()
+        newsdb.connect()
+        newsdb.check_tables()
+        log.info( "news initialization completed... [SUCCESS]" );
+        
     except Exception, e:
         log.error( "database initialization error: %s" % ( e, ) )
         exit()
-        
+         
     #---------------------------------
     # module initialization
     #---------------------------------
@@ -1233,6 +1421,7 @@ if __name__ == '__main__' :
     except Exception, e:
         log.error( "module initialization error: %s" % ( e, ) )
         
+
     #---------------------------------
     # Web Count Updater initialization
     #---------------------------------

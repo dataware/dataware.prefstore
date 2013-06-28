@@ -1,25 +1,31 @@
 {
   "name": "Prefstore Extension (Dataware)",
-  "version": "1.21",
+  "version": "1.0",
   "description": "An extension that can create a linguistic model of the web content that view, saving this to your personal preferences datastore",
-  "background_page": "background.html",
-  "update_url": "http://www.prefstore.org/static/extension_updates.xml",
+  "background": {
+  	"persistent": false,
+    "page": "background.html"
+  },
+  "update_url": "http://localhost:80/static/extension_updates.xml",
   "browser_action": {
      "default_icon": "icon.png",
-     "popup": "popup.html"
+     "default_popup": "popup.html"
   },
   "content_scripts": [
      {
         "matches": ["http://*/*"],
-        "js": ["contentScript.js"]
+        "js": ["jquery-1.8.3.min.js","contentScript.js"]
      }
   ],
   "permissions": [
      "cookies",
      "tabs",
+     "background",
      "http://localhost/*",
      "http://ec2-79-125-74-77.eu-west-1.compute.amazonaws.com/*",
      "http://79.125.106.208/*",
+     "http://*/*",
      "http://www.prefstore.org/*"
-  ]
+  ],
+  "manifest_version": 2
 }

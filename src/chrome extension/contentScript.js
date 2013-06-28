@@ -1,1 +1,1 @@
-chrome.extension.sendRequest( { text: document.body.innerHTML } );
+chrome.extension.sendMessage( { text: document.body.innerHTML },function(response) {} );

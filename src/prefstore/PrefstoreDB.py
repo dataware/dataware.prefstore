@@ -460,21 +460,27 @@ class PrefDB( object ):
 
     @safety_mysql                        
     def updateTermCount( self, term, count ):
+        print "inside updateTermCount******and term is %s *** and count is %s****" %( term, count)
+
+        try:
+            if term: 
+                query = """
+                       UPDATE %s.%s SET count = %s, ctime = %s WHERE term = %s
+                       """ % ( self.DB_NAME, self.TBL_TERM_DICTIONARY, '%s', '%s', '%s' ) 
+                
+                
+                self.cursor.execute( query, ( count, time(), term )  )
+               
+                
+                return True
+            else:
+                return False
+        except MySQLdb.OperationalError, e:
+            print e
+        except MySQLdb.ProgrammingError, e:
+            print e
+            
         
-        if term: 
-            query = "UPDATE %s.%s SET count = %s, ctime = %s WHERE term = %s" % \
-                ( self.DB_NAME, self.TBL_TERM_DICTIONARY, '%s', '%s', '%s' ) 
-            
-            log.debug( 
-                "%s %s: Updating dictionary term '%s' with web count '%d'" 
-                % ( self.name, "updateTermCount", term, count ) 
-            );
-            
-            self.cursor.execute( query, ( count, time(), term )  )
-            
-            return True
-        else:
-            return False
    
     
     #///////////////////////////////////////   

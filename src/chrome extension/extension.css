@@ -18,7 +18,9 @@ form input.text {
     padding: 2px;
 }
 
-
+a:hover {
+ cursor:pointer;
+}
 .openid_out img {
 	float:left; 
 	width:75px;
@@ -90,6 +92,7 @@ form input.text {
 	background-color: #ffffff;
 	border-top: 1px dotted #dddddd;
 	padding: 5px 5px 5px 20px;
+	height:13px;
 }
 
 .blockNum {

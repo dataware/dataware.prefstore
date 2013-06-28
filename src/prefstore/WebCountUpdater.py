@@ -22,7 +22,8 @@ class WebCountUpdater( threading.Thread ):
     #the length of time seconds between updating web term counts
     INTERVAL_DURATION = 60 * 10
     GOOGLE_APP_KEY = "AIzaSyBI8AxzRpN70njcpuOW9EaaRikxd-mc-1M&cx=017576662512468239146:omuauf_lfve"
-    BING_KEY = "580DDBFFD1A4581F90038B9D5B80BA065FEFE4E7"
+    #BING_KEY = "580DDBFFD1A4581F90038B9D5B80BA065FEFE4E7"
+    BING_KEY = "FFf+w8l0rzbt8xyUNHsUKQlYGU6TrEzGl7LqRrxE2Bs"
   
   
     #///////////////////////////////////////////////
@@ -58,10 +59,12 @@ class WebCountUpdater( threading.Thread ):
                     
                 # Otherwise update its freshly determined webcount    
                 else:
+                    
                     self.database.updateTermCount( term, count )
                     termsUpdated += 1
                 
                 self.database.commit()
+               
 
             except:
                 log.error( "Error fetching web count for term %s: %s" % ( term, sys.exc_info()[0] ) )

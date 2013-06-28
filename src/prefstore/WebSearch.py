@@ -79,32 +79,34 @@ class WebSearch( object ):
 
 
     def getBingTotal( self, term ):
-
+        
+        quoted_query = urllib.quote("'" + term + "'")
         # Retrieve hits from bing for this query term
         result = urllib.urlopen(
-            "http://api.search.live.net/json.aspx?Appid=%s&query=%s&sources=web" % 
-            ( self._BING_KEY, term ), 
-            proxies=self._PROXY )
-    
+            "https://user:"+ self._BING_KEY +"@api.datamarket.azure.com/Bing/Search/v1/Composite?Sources=%27Web%27&Query="+ quoted_query +"&$format=JSON", 
+            proxies={'http': 'http://mainproxy.nottingham.ac.uk:8080'} )
         # Collate the result
         output = "";
         for line in result.readlines() : 
             output += line;
-    
+        
         # ...and turn it into json
-        jsonOutput = json.loads( output ).get( 'SearchResponse' )
+        
+        jsonOutput = json.loads( output )
+        data = jsonOutput.get('d').get('results')
     
         # do some error checking
-        errors = jsonOutput.get( 'Errors' ) 
-        if not errors is None:
-            for e in errors :
-                log.error( "Error %d from Bing: %s" %
-                    ( e.get( 'Code' ), e.get('Message') ) )  
-            raise
+        #errors = jsonOutput.get( 'Errors' ) 
+        #if not errors is None:
+        #    for e in errors :
+        #        log.error( "Error %d from Bing: %s" %
+        #            ( e.get( 'Code' ), e.get('Message') ) )  
+        #    raise
         
         # and finally try and extract a web count
         try:
-            total = jsonOutput.get( "Web" ).get( "Total" )
+            total = data[0].get('WebTotal')
+            print ("total is %s" %total )
             return total
         except:
             return None
@@ -114,11 +116,13 @@ class WebSearch( object ):
 
 
     def getBingImage( self, term ):
-
+        
+        quoted_query = urllib.quote(term)
+        print "************query in bing image is %s" %quoted_query
         # Retrieve hits from bing for this query term
         result = urllib.urlopen(
-            "http://api.search.live.net/json.aspx?Appid=%s&query=%s&sources=Image&Image.Count=20&Image.Offset=0&Adult=Strict&Image.Filters=Aspect:square" % 
-            ( self._BING_KEY, term ), 
+            "https://user:%s@api.datamarket.azure.com/Bing/Search/v1/Image?Query=%s&$top=20&Adult=%27Strict%27&ImageFilters=%27Aspect%3Asquare%27" % 
+            ( self._BING_KEY, quoted_query ), 
             proxies=self._PROXY )    
         
         # Collate the result

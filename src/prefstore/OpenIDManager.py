@@ -36,7 +36,9 @@ def process( realm, return_to, provider, username=None ):
     #provider's OpenID endpoint     
     try:
         endpoint_url = discover( discovery_url )
-    except:
+        print "endpoint_url is %s " % endpoint_url
+    except Exception, e:
+        print "Couldn't do it: %s" % e
         raise Exception( "OpenID discovery has failed" )
     
     #Create an association between us and the 
@@ -71,7 +73,7 @@ def discover( discovery_url ):
         provider (first by xdrs and then by html discovery).
         If this fails and exception will be thrown by the regex.
     """
-    result = urllib.urlopen( discovery_url ).read()
+    result = urllib.urlopen( discovery_url,proxies={'http': 'http://mainproxy.nottingham.ac.uk:8080'} ).read()
     m = re.search( "<URI>(.*)</URI>", result )
     if m is None :
         m = re.search( 
@@ -95,7 +97,7 @@ def createAssociation( endpoint_url ):
         "&openid.assoc_type=HMAC-SHA1" + \
         "&openid.session_type=no-encryption"
         
-    result = urllib.urlopen( url ).read()
+    result = urllib.urlopen( url,proxies={'http': 'http://mainproxy.nottingham.ac.uk:8080'} ).read()
     m = re.search( "assoc_handle:(.*)\n", result )
     return m.group( 1 ); 
 

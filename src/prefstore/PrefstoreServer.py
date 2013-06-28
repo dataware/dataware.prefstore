@@ -9,7 +9,7 @@ from ProcessingModule import *      #@UnusedWildImport
 from InstallationModule import *    #@UnusedWildImport
 from DatawareDB import *            #@UnusedWildImport
 from PrefstoreDB import *           #@UnusedWildImport
-from NewsDB import *           #@UnusedWildImport
+#from NewsDB import *           #@UnusedWildImport
 import time                         #@Reimport
 import OpenIDManager
 import logging.handlers
@@ -843,6 +843,7 @@ def submit_distill():
     """
 
     try:
+        print "inside submit distillation *****************************************"
         # First extracted the necessary POST parameters
         user_id = request.forms.get( 'user_id' )
         data = request.forms.get( 'data' ) 
@@ -1304,23 +1305,23 @@ def news():
     #then send them home. naughty user.
     if ( not user ) : redirect( ROOT_PAGE )
 
-    summary = newsdb.items_user_summary( user[ "user_id" ] );
+    #summary = newsdb.items_user_summary( user[ "user_id" ] );
     
-    stories = newsdb.items_user_fetch(
-        user[ "user_id" ],
-        limit
-    )
+    #stories = newsdb.items_user_fetch(
+    #    user[ "user_id" ],
+    #    limit
+    #)
     
-    sorted_stories = [ i for i in stories ]
-    for i in range( limit ): sorted_stories[ i ][ "id" ] = i
-    sorted_stories.sort( key=lambda k:k["score"], reverse = True )
-    score_positions = [ i.get( "id" ) for i in sorted_stories ]
+    #sorted_stories = [ i for i in stories ]
+    #for i in range( limit ): sorted_stories[ i ][ "id" ] = i
+    #sorted_stories.sort( key=lambda k:k["score"], reverse = True )
+    #score_positions = [ i.get( "id" ) for i in sorted_stories ]
     
     return template( 'audit_page_template', 
-        user=user, 
-        score_positions = score_positions,
-        stories = stories,
-        summary = summary ); 
+        user=user) 
+        #score_positions = score_positions,
+        #stories = stories,
+        #summary = summary ); 
     
             
 #//////////////////////////////////////////////////////////
@@ -1328,7 +1329,7 @@ def news():
 #//////////////////////////////////////////////////////////
 
 
-if __name__ == '__main__' :
+if __name__ == "__main__":
 
     #-------------------------------
     # setup logging
@@ -1394,18 +1395,21 @@ if __name__ == '__main__' :
     # Initialization
     #---------------------------------
     try:
+        print "start"
         datadb = DataDB()
+        print "after start"
         datadb.connect()
+        print "after connect"
         datadb.check_tables()
         prefdb = PrefDB()
         prefdb.connect()
         prefdb.check_tables()
         log.info( "database initialization completed... [SUCCESS]" );
         
-        newsdb = NewsDB()
-        newsdb.connect()
-        newsdb.check_tables()
-        log.info( "news initialization completed... [SUCCESS]" );
+        #newsdb = NewsDB()
+        #newsdb.connect()
+        #newsdb.check_tables()
+        #log.info( "news initialization completed... [SUCCESS]" );
         
     except Exception, e:
         log.error( "database initialization error: %s" % ( e, ) )

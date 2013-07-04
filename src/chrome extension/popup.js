@@ -9,7 +9,6 @@
 	DIV_NAMES[ 2 ] = "registerBox";
 	DIV_NAMES[ 3 ] = "loggedOutMsg";
 	PREFSTORE = window.localStorage.getItem( "prefstore" );
-	console.log('prefstore is **** ' + window.localStorage.getItem( "prefstore" ));
 	COOKIE_NAME = window.localStorage.getItem( "cookie_name" );	
 	DOMAIN = window.localStorage.getItem( "domain" );	
 	
@@ -108,10 +107,8 @@
 	 * the state of the model
 	 */ 
 	function displayBox( divToShow, duration ) {
-		console.log('div to show is ' + divToShow);
 		for( i = 0; i < DIV_NAMES.length; i++ ) {
 			if ( divToShow == DIV_NAMES[ i ] ) {
-				console.log('div to show in if ' + DIV_NAMES[ i ]);
 				$( '#' + DIV_NAMES[ i ] ).show( duration );
 			} 
 			else {
@@ -125,7 +122,6 @@
 	 * Function that redirects the user to the server's openid login
 	 */ 
 	function login( provider ) {
-		console.log('prefstore is ' + PREFSTORE );
 		window.open( PREFSTORE + "login?provider=" + provider, "_blank" );
 	}
 	
@@ -156,7 +152,6 @@
 	 * Function that resets all of the extensions statistics
 	 */
 	function clearLocalStorage() {
-		console.log('inside clear****');
 		if ( confirm( 'Are you sure you want to clear Local Storage? This is not undoable...' ) ) {
 			window.localStorage.setItem( "pagesAnalysed" ) = 0;
 			window.localStorage.setItem( "pagesSent" ) = 0;

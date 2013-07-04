@@ -33,7 +33,6 @@
 	//-- Listener to receive word vectors from the content script.
 	chrome.extension.onMessage.addListener(
 			function( request, sender, sendResponse ) {
-				console.log('listener**');
 				processVector( request.text, sender.tab.url, sender.tab.title );
 			}
 	);
@@ -65,10 +64,12 @@
 					//console.log('data is ******' +  jsonData.user_name);
 					
 					if ( jsonData.user_id ) {
+						//console.log('user_id is ******' +  jsonData.user_id);
 						window.localStorage.setItem( "user_id", jsonData.user_id );
 					}
 					
 					if ( jsonData.user_name ) {
+						//console.log('user_name is ******' +  jsonData.user_name);
 						window.localStorage.setItem( "user_name", jsonData.user_name );
 					}
 				}
@@ -94,6 +95,7 @@
 		
 		//-- Make sure the correct favicon is displayed
 		if ( user_id && user_name ) {
+			console.log('user_name is ******' +  user_id);
 			chrome.browserAction.setIcon( { path:"icon.png" } );
 		} else {
 			chrome.browserAction.setIcon( { path:"icon-dormant.png" } );
@@ -340,5 +342,6 @@
 	function incrementUserStat( parameter ) {
 		amount = window.localStorage.getItem( parameter );
 		if ( !amount ) amount = 0;
+		console.log('parameter in bground is ' + parameter + ' and amount is ' + amount);
 		window.localStorage.setItem( parameter, ++amount );
 	}

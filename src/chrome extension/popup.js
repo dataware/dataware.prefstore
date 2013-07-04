@@ -26,17 +26,20 @@
 		
 		user_id = window.localStorage.getItem( "user_id" );
 		user_name = window.localStorage.getItem( "user_name" );
-	
-		$( '#user_name' ).html( user_name ) 
+		
+		$( '#user_name' ).html( user_name ); 
 		
 		//-- create the appropriate information box
 		if ( user_id && !user_name ) {
+			
 			displayBox( "registerBox", duration );
 		}
 		else if ( user_id && user_name ) {
+			
 			displayBox( "loggedInBox", duration );
 		}
 		else {
+			
 			chrome.browserAction.setIcon( { path:"icon-dormant.png" } );
 			displayBox( "loggedOutBox", duration );
 			$( '#loggedOutMsg' ).show( duration );
@@ -56,25 +59,24 @@
 			pagesAnalysed = window.localStorage.getItem( "pagesAnalysed" );
 			pagesSent = window.localStorage.getItem( "pagesSent" );
 			pagesComplete = window.localStorage.getItem( "pagesComplete" );
-
+			console.log('pages analysed is ' + pagesAnalysed + ' pagesSent is ' + pagesSent + ' pagesComplete is ' + pagesComplete);
 			pagesSent = pagesSent ? pagesSent : 0;
 			pagesComplete = pagesComplete ? pagesComplete : 0;
 			pagesAnalysed = pagesAnalysed ? pagesAnalysed : 0;
 
 			//lastPage = eval( '(' + window.localStorage.getItem( "lastPage" ) + ')' );
-			console.log('last page before ' + window.localStorage.getItem( "lastPage" ));
-			lastPage = JSON.parse(  window.localStorage.getItem( "lastPage" )  );
+			//console.log('last page before ' + window.localStorage.getItem( "lastPage" ));
+			lastPage = JSON.parse(window.localStorage.getItem( "lastPage" ));
 			
 			//console.log('last page after '+ lastPage.fv + ' type is ' + typeof lastPage );
 			lastPageStatus = window.localStorage.getItem( "lastPageStatus" );
 
-			$( '#pagesAnalysed' ).html( "Pages distilled: " + pagesAnalysed );
-			$( '#pagesSent' ).html( "Deliveries attempted: " + pagesSent );
-			$( '#pagesComplete' ).html( "Deliveries completed: " + pagesComplete );
+			$('#pagesAnalysed').html( "Pages distilled: " + pagesAnalysed );
+			$('#pagesSent').html( "Deliveries attempted: " + pagesSent );
+			$('#pagesComplete').html( "Deliveries completed: " + pagesComplete );
 			
-			$( '#termlist' ).html( "" );
+			$('#termlist').html( "" );
 			if ( lastPage ) {
-				
 				fvLength = 0;
 				$.each( lastPage.fv, function( key, value ){
 					fvLength++;
@@ -106,8 +108,10 @@
 	 * the state of the model
 	 */ 
 	function displayBox( divToShow, duration ) {
+		console.log('div to show is ' + divToShow);
 		for( i = 0; i < DIV_NAMES.length; i++ ) {
 			if ( divToShow == DIV_NAMES[ i ] ) {
+				console.log('div to show in if ' + DIV_NAMES[ i ]);
 				$( '#' + DIV_NAMES[ i ] ).show( duration );
 			} 
 			else {
@@ -152,6 +156,7 @@
 	 * Function that resets all of the extensions statistics
 	 */
 	function clearLocalStorage() {
+		console.log('inside clear****');
 		if ( confirm( 'Are you sure you want to clear Local Storage? This is not undoable...' ) ) {
 			window.localStorage.setItem( "pagesAnalysed" ) = 0;
 			window.localStorage.setItem( "pagesSent" ) = 0;
@@ -162,10 +167,10 @@
 		}
 	}
 	
-	function main() {
+	$(function() {
         // Initialization work goes here.
 		refresh();
-      }
+      });
 	
     document.addEventListener('DOMContentLoaded', function () {
         var google = document.getElementById('google');

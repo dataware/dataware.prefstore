@@ -8,25 +8,27 @@
 
 <body>
 <div style="font-family:georgia; font-size:12px;">
-	<div style="float:left; margin:-5 10 0 0; width:190px; text-align:right;"> 
-		<img src="images/dwlogofull.png" style="border:1px; width:98%;"/>
-		<span id="loggedOutMsg">Please login using one of:</span>
+	<div id="loggedOutBox">
+		<div style="float:left; margin:-5 10 0 0; width:190px; text-align:right;"> 
+			<img src="images/dwlogofull.png" style="border:1px; width:98%;"/>
+			<span id="loggedOutMsg">Please login using one of:</span>
+		</div>
+		<div style="float:left; width:170px; margin-top:5px; margin-bottom:10px;" >
+			<a id="google" class="openid_out">	
+				<img src="images/google_openid.png"/>
+			</a>
+			<a id="yahoo" class="openid_out">	
+				<img src="images/yahoo_openid.png" />
+			</a>
+			<a id="aol" class="openid_out">	
+				<img src="images/aol_openid.png" />
+			</a>
+			<a id="myopenid" class="openid_out">	
+				<img src="images/myopenid_openid.png" />
+			</a>
+		</div>
 	</div>
-
-	<div id="loggedOutBox" style="float:left; width:170px; margin-top:5px; margin-bottom:10px;" >
-		<a id="google" class="openid_out">	
-			<img src="images/google_openid.png"/>
-		</a>
-		<a id="yahoo" class="openid_out">	
-			<img src="images/yahoo_openid.png" />
-		</a>
-		<a id="aol" class="openid_out">	
-			<img src="images/aol_openid.png" />
-		</a>
-		<a id="myopenid" class="openid_out">	
-			<img src="images/myopenid_openid.png" />
-		</a>
-	</div>
+	
 
 	<div id="loggedInBox" class="displayBox" style="height:65px; text-align:right; width:230px">
 		<div style="font-size:19px; color: #444444; margin-bottom:-2px;">Username:</div>
